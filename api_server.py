@@ -7,7 +7,7 @@ import os
 from flask import Flask, jsonify, request
 from flask_cors import CORS
 import asyncio
-from instagram_monitor import InstagramMonitor, MonitorAPI
+from instagram_monitor import InstagramMonitor, MonitorAPI, _parse_chat_ids
 import threading
 import logging
 
@@ -18,14 +18,17 @@ app = Flask(__name__)
 CORS(app)  # Разрешаем запросы от Telegram Mini App
 
 # ── Конфигурация из переменных окружения ──────────────────────
-TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN")
-TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "YOUR_CHAT_ID")
-DB_PATH            = os.environ.get("DB_PATH",             "instagram_monitor.db")
+TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN")
+TELEGRAM_CHAT_IDS   = os.environ.get("TELEGRAM_CHAT_IDS",  "")
+DB_PATH             = os.environ.get("DB_PATH",             "instagram_monitor.db")
+
+CHAT_IDS = _parse_chat_ids(TELEGRAM_CHAT_IDS)
 
 # Инициализация монитора
 monitor = InstagramMonitor(
     db_path=DB_PATH,
-    telegram_token=TELEGRAM_BOT_TOKEN
+    telegram_token=TELEGRAM_BOT_TOKEN,
+    telegram_chat_ids=CHAT_IDS,
 )
 api = MonitorAPI(monitor)
 
@@ -37,10 +40,7 @@ def run_background_monitoring():
 
     logger.info("Фоновый мониторинг запущен")
     loop.run_until_complete(
-        monitor.run_continuous_monitoring(
-            interval_minutes=60,
-            telegram_chat_id=TELEGRAM_CHAT_ID
-        )
+        monitor.run_continuous_monitoring(interval_minutes=60)
     )
 
 monitoring_thread = threading.Thread(target=run_background_monitoring, daemon=True)
@@ -97,7 +97,7 @@ def get_alerts():
 def trigger_manual_check():
     try:
         async def check():
-            await monitor.monitor_cycle(TELEGRAM_CHAT_ID)
+            await monitor.monitor_cycle()
         asyncio.run(check())
         return jsonify({"success": True, "message": "Проверка запущена"})
     except Exception as e:

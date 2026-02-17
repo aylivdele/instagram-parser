@@ -16,6 +16,23 @@ import logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
+
+def _parse_chat_ids(env_value: str) -> List[str]:
+    """
+    Разбирает TELEGRAM_CHAT_IDS из строки окружения в список строк.
+
+    Поддерживаемые форматы:
+        TELEGRAM_CHAT_IDS=58386007,387051080
+        TELEGRAM_CHAT_IDS=[58386007, 387051080]
+        TELEGRAM_CHAT_IDS=["58386007", "387051080"]
+    """
+    if not env_value:
+        return []
+    # Убираем квадратные скобки, если они есть
+    cleaned = env_value.strip().lstrip("[").rstrip("]")
+    # Разбиваем по запятой, убираем кавычки и пробелы
+    return [part.strip().strip('"').strip("'") for part in cleaned.split(",") if part.strip()]
+
 # ── Конфигурация Apify ─────────────────────────────────────────
 APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
 
@@ -234,9 +251,10 @@ async def fetch_instagram_posts_apify(
 # ══════════════════════════════════════════════════════════════════
 
 class InstagramMonitor:
-    def __init__(self, db_path: str = "monitor.db", telegram_token: str = None):
+    def __init__(self, db_path: str = "monitor.db", telegram_token: str = None, telegram_chat_ids: List[str] = None):
         self.db_path = db_path
         self.telegram_token = telegram_token
+        self.telegram_chat_ids: List[str] = telegram_chat_ids or []
         self.init_database()
 
     def init_database(self):
@@ -426,49 +444,79 @@ class InstagramMonitor:
         logger.info(f"🚀 Новый трендовый пост обнаружен: @{metrics.username}")
         return True
 
-    async def send_telegram_alert(self, metrics: PostMetrics, chat_id: str):
+    async def _send_to_one_chat(
+        self,
+        session: aiohttp.ClientSession,
+        chat_id: str,
+        message: str,
+    ) -> bool:
+        """Отправляет сообщение в один чат. Возвращает True при успехе."""
+        url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
+        try:
+            async with session.post(url, json={
+                "chat_id": chat_id,
+                "text": message,
+                "parse_mode": "HTML",
+            }) as response:
+                if response.status == 200:
+                    logger.info(f"Уведомление отправлено в чат {chat_id}")
+                    return True
+                else:
+                    body = await response.text()
+                    logger.error(f"Ошибка отправки в чат {chat_id}: {response.status} — {body}")
+                    return False
+        except Exception as e:
+            logger.error(f"Исключение при отправке в чат {chat_id}: {e}")
+            return False
+
+    async def send_telegram_alert(self, metrics: PostMetrics, chat_ids: List[str] = None):
+        """
+        Рассылает алерт о трендовом посте во все чаты из списка.
+
+        Args:
+            metrics:  Метрики трендового поста.
+            chat_ids: Список chat_id для отправки. Если None — берёт
+                      self.telegram_chat_ids, заданные при инициализации.
+        """
         if not self.telegram_token:
             logger.warning("Telegram токен не настроен")
             return
 
-        message = f"""
-🚀 <b>Обнаружен вирусный контент!</b>
+        recipients = chat_ids if chat_ids is not None else self.telegram_chat_ids
+        if not recipients:
+            logger.warning("Список получателей Telegram пуст — алерт не отправлен")
+            return
 
-👤 Аккаунт: @{metrics.username}
-📊 Просмотры: {metrics.current_views:,}
-⚡️ Скорость: {metrics.views_per_hour:.0f} просм/час
-📈 Рост: +{metrics.growth_rate:.0f}% от обычного
+        message = (
+            f"🚀 <b>Обнаружен вирусный контент!</b>\n\n"
+            f"👤 Аккаунт: @{metrics.username}\n"
+            f"📊 Просмотры: {metrics.current_views:,}\n"
+            f"⚡️ Скорость: {metrics.views_per_hour:.0f} просм/час\n"
+            f"📈 Рост: +{metrics.growth_rate:.0f}% от обычного\n\n"
+            f"Среднее: {metrics.avg_views_per_hour:.0f} просм/час\n\n"
+            f"🔗 <a href=\"{metrics.url}\">Открыть пост</a>"
+        )
 
-Среднее: {metrics.avg_views_per_hour:.0f} просм/час
-
-🔗 <a href="{metrics.url}">Открыть пост</a>
-        """
-
-        url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-
+        any_success = False
         async with aiohttp.ClientSession() as session:
-            try:
-                async with session.post(url, json={
-                    "chat_id": chat_id,
-                    "text": message.strip(),
-                    "parse_mode": "HTML",
-                }) as response:
-                    if response.status == 200:
-                        logger.info("Уведомление отправлено в Telegram")
-                        conn = sqlite3.connect(self.db_path)
-                        cursor = conn.cursor()
-                        cursor.execute(
-                            "UPDATE alerts SET sent_to_telegram = 1 WHERE post_id = ?",
-                            (metrics.post_id,)
-                        )
-                        conn.commit()
-                        conn.close()
-                    else:
-                        logger.error(f"Ошибка отправки в Telegram: {response.status}")
-            except Exception as e:
-                logger.error(f"Ошибка при отправке уведомления: {e}")
+            # Отправляем параллельно во все чаты
+            results = await asyncio.gather(
+                *[self._send_to_one_chat(session, cid, message) for cid in recipients],
+                return_exceptions=True,
+            )
+            any_success = any(r is True for r in results)
 
-    async def monitor_cycle(self, telegram_chat_id: Optional[str] = None):
+        if any_success:
+            conn = sqlite3.connect(self.db_path)
+            cursor = conn.cursor()
+            cursor.execute(
+                "UPDATE alerts SET sent_to_telegram = 1 WHERE post_id = ?",
+                (metrics.post_id,),
+            )
+            conn.commit()
+            conn.close()
+
+    async def monitor_cycle(self):
         competitors = self.get_competitors()
         if not competitors:
             logger.warning("Нет конкурентов для мониторинга")
@@ -490,8 +538,7 @@ class InstagramMonitor:
                     metrics = self.calculate_post_metrics(post)
                     if metrics.is_trending:
                         if self.save_alert(metrics):
-                            if telegram_chat_id:
-                                await self.send_telegram_alert(metrics, telegram_chat_id)
+                            await self.send_telegram_alert(metrics)
 
                 await asyncio.sleep(2)
 
@@ -503,12 +550,15 @@ class InstagramMonitor:
     async def run_continuous_monitoring(
         self,
         interval_minutes: int = 60,
-        telegram_chat_id: Optional[str] = None,
     ):
-        logger.info(f"Запуск непрерывного мониторинга (интервал: {interval_minutes} мин)")
+        chat_list = ", ".join(self.telegram_chat_ids) if self.telegram_chat_ids else "не заданы"
+        logger.info(
+            f"Запуск непрерывного мониторинга "
+            f"(интервал: {interval_minutes} мин, чаты: {chat_list})"
+        )
         while True:
             try:
-                await self.monitor_cycle(telegram_chat_id)
+                await self.monitor_cycle()
                 logger.info(f"Следующая проверка через {interval_minutes} минут")
                 await asyncio.sleep(interval_minutes * 60)
             except KeyboardInterrupt:
@@ -578,13 +628,21 @@ class MonitorAPI:
 # ══════════════════════════════════════════════════════════════════
 
 if __name__ == "__main__":
-    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
-    TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "YOUR_CHAT_ID")
-    DB_PATH            = os.environ.get("DB_PATH",             "instagram_monitor.db")
+    TELEGRAM_BOT_TOKEN  = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+    TELEGRAM_CHAT_IDS   = os.environ.get("TELEGRAM_CHAT_IDS",  "")
+    DB_PATH             = os.environ.get("DB_PATH",             "instagram_monitor.db")
 
-    monitor = InstagramMonitor(db_path=DB_PATH, telegram_token=TELEGRAM_BOT_TOKEN)
+    chat_ids = _parse_chat_ids(TELEGRAM_CHAT_IDS)
+    if not chat_ids:
+        logger.warning(
+            "TELEGRAM_CHAT_IDS не задан — уведомления в Telegram отправляться не будут. "
+            "Пример: TELEGRAM_CHAT_IDS=58386007,387051080"
+        )
 
-    asyncio.run(monitor.run_continuous_monitoring(
-        interval_minutes=60,
-        telegram_chat_id=TELEGRAM_CHAT_ID,
-    ))
+    monitor = InstagramMonitor(
+        db_path=DB_PATH,
+        telegram_token=TELEGRAM_BOT_TOKEN,
+        telegram_chat_ids=chat_ids,
+    )
+
+    asyncio.run(monitor.run_continuous_monitoring(interval_minutes=60))
