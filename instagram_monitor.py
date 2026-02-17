@@ -5,6 +5,7 @@ Instagram Trend Monitor Backend
 
 import asyncio
 import aiohttp
+import os
 import json
 from datetime import datetime, timedelta
 from typing import List, Dict, Optional
@@ -12,9 +13,26 @@ import sqlite3
 from dataclasses import dataclass, asdict
 import logging
 
-# Настройка логирования
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+# ── Конфигурация Apify ─────────────────────────────────────────
+APIFY_TOKEN = os.environ.get("APIFY_TOKEN", "")
+
+# Актор apify/instagram-post-scraper (официальный, поддерживается Apify)
+# Документация: https://apify.com/apify/instagram-post-scraper
+APIFY_ACTOR_ID = "apify~instagram-post-scraper"
+
+# Синхронный REST-эндпоинт: запускает актор и сразу возвращает датасет
+# Таймаут до 5 минут — актор завершается обычно за 30-90 секунд
+APIFY_RUN_SYNC_URL = (
+    f"https://api.apify.com/v2/acts/{APIFY_ACTOR_ID}"
+    f"/run-sync-get-dataset-items"
+    f"?token={APIFY_TOKEN}"
+    f"&timeout=300"        # макс. время ожидания ответа, сек
+    f"&memory=256"         # MB RAM для актора (минимум достаточный)
+)
+
 
 @dataclass
 class Post:
@@ -24,7 +42,8 @@ class Post:
     views: int
     likes: int
     timestamp: datetime
-    
+
+
 @dataclass
 class PostMetrics:
     post_id: str
@@ -33,23 +52,197 @@ class PostMetrics:
     current_views: int
     views_per_hour: float
     avg_views_per_hour: float
-    growth_rate: float  # Скорость роста в процентах
+    growth_rate: float
     is_trending: bool
     alert_sent: bool = False
 
+
+# ══════════════════════════════════════════════════════════════════
+# Получение постов через Apify Instagram Post Scraper
+# ══════════════════════════════════════════════════════════════════
+
+def _parse_apify_item(item: dict, username: str) -> Optional[Post]:
+    """
+    Разбирает один элемент из датасета Apify в объект Post.
+
+    Структура ответа apify/instagram-post-scraper (актуальная):
+    {
+      "id":           "ABC123shortcode",
+      "url":          "https://www.instagram.com/p/ABC123/",
+      "likesCount":   1500,          # -1 если автор скрыл лайки
+      "videoViewCount": 42000,       # только для видео/reels, иначе null
+      "videoPlayCount": 45000,       # альтернативное поле просмотров
+      "commentsCount": 230,
+      "timestamp":    "2024-11-01T12:00:00.000Z",
+      "ownerUsername": "nike",
+      "type":         "Video" | "Image" | "Sidecar",
+      ...
+    }
+    """
+    try:
+        post_id = item.get("id") or item.get("shortCode")
+        if not post_id:
+            return None
+
+        url = item.get("url") or item.get("postUrl") or ""
+        if not url:
+            short_code = item.get("shortCode", post_id)
+            url = f"https://www.instagram.com/p/{short_code}/"
+
+        likes = item.get("likesCount", 0) or 0
+        if likes < 0:          # Instagram скрыл лайки — ставим 0
+            likes = 0
+
+        # Просмотры: для видео/reels есть videoViewCount или videoPlayCount,
+        # для фото считаем через лайки (условный коэффициент ~10x)
+        views = (
+            item.get("videoViewCount")
+            or item.get("videoPlayCount")
+            or item.get("playsCount")
+            or (likes * 10)   # fallback для фото
+        )
+        views = max(int(views), 0)
+
+        raw_ts = item.get("timestamp") or item.get("takenAt")
+        if isinstance(raw_ts, (int, float)):
+            # Unix timestamp в секундах
+            timestamp = datetime.utcfromtimestamp(raw_ts)
+        elif isinstance(raw_ts, str):
+            # ISO 8601: "2024-11-01T12:00:00.000Z"
+            timestamp = datetime.fromisoformat(raw_ts.replace("Z", "+00:00"))
+            timestamp = timestamp.replace(tzinfo=None)   # убираем timezone для sqlite
+        else:
+            timestamp = datetime.utcnow()
+
+        # username из самого элемента приоритетнее переданного аргумента
+        owner = item.get("ownerUsername") or item.get("username") or username
+
+        return Post(
+            post_id=str(post_id),
+            username=owner,
+            url=url,
+            views=views,
+            likes=likes,
+            timestamp=timestamp,
+        )
+
+    except Exception as e:
+        logger.warning(f"Не удалось разобрать элемент Apify: {e} | item={item}")
+        return None
+
+
+async def fetch_instagram_posts_apify(
+    username: str,
+    limit: int = 10,
+    only_recent_hours: int = 48,
+) -> List[Post]:
+    """
+    Получает последние посты пользователя через Apify Instagram Post Scraper.
+
+    Использует синхронный эндпоинт run-sync-get-dataset-items:
+    актор запускается и ждёт завершения в рамках одного HTTP-запроса.
+
+    Args:
+        username:           Instagram-логин без @
+        limit:              Максимальное кол-во постов (resultsLimit для актора)
+        only_recent_hours:  Фильтр: вернуть только посты не старше N часов
+                            (onlyPostsNewerThan передаётся прямо в актор)
+
+    Returns:
+        Список Post, отсортированный от свежего к старому.
+
+    Raises:
+        RuntimeError: если APIFY_TOKEN не задан или API вернул ошибку.
+    """
+    if not APIFY_TOKEN:
+        raise RuntimeError(
+            "APIFY_TOKEN не задан. "
+            "Добавьте его в .env или в переменные окружения Docker."
+        )
+
+    # Дата-фильтр: просим актор вернуть только свежие посты
+    newer_than = (datetime.utcnow() - timedelta(hours=only_recent_hours)).strftime(
+        "%Y-%m-%dT%H:%M:%S.000Z"
+    )
+
+    # Входные параметры актора (актуальная схема apify/instagram-post-scraper)
+    run_input = {
+        "username": [username],          # список логинов
+        "resultsLimit": limit,           # кол-во постов на профиль
+        "onlyPostsNewerThan": newer_than,  # фильтр по дате (поддерживается актором)
+    }
+
+    logger.info(f"[Apify] Запрос постов @{username} (лимит={limit}, за {only_recent_hours}ч)")
+
+    timeout = aiohttp.ClientTimeout(total=310)   # чуть больше таймаута актора
+
+    async with aiohttp.ClientSession(timeout=timeout) as session:
+        async with session.post(
+            APIFY_RUN_SYNC_URL,
+            json=run_input,
+            headers={"Content-Type": "application/json"},
+        ) as resp:
+
+            if resp.status == 400:
+                body = await resp.text()
+                raise RuntimeError(f"[Apify] Неверный запрос (400): {body}")
+
+            if resp.status == 401:
+                raise RuntimeError(
+                    "[Apify] Неверный токен (401). Проверьте APIFY_TOKEN."
+                )
+
+            if resp.status == 429:
+                raise RuntimeError(
+                    "[Apify] Превышен rate limit Apify (429). "
+                    "Подождите или увеличьте интервал мониторинга."
+                )
+
+            if resp.status >= 500:
+                body = await resp.text()
+                raise RuntimeError(f"[Apify] Ошибка сервера ({resp.status}): {body}")
+
+            if resp.status != 200:
+                body = await resp.text()
+                raise RuntimeError(f"[Apify] Неожиданный статус {resp.status}: {body}")
+
+            # Датасет возвращается как JSON-массив напрямую
+            items: list = await resp.json()
+
+    if not isinstance(items, list):
+        # Иногда при ошибке Apify возвращает объект {"error": ...}
+        error_msg = items.get("error", {}).get("message", str(items)) if isinstance(items, dict) else str(items)
+        raise RuntimeError(f"[Apify] Неожиданный формат ответа: {error_msg}")
+
+    logger.info(f"[Apify] @{username}: получено {len(items)} элементов из датасета")
+
+    posts: List[Post] = []
+    for item in items:
+        post = _parse_apify_item(item, username)
+        if post is not None:
+            posts.append(post)
+
+    # Сортируем от самого свежего к старому
+    posts.sort(key=lambda p: p.timestamp, reverse=True)
+
+    logger.info(f"[Apify] @{username}: успешно разобрано {len(posts)} постов")
+    return posts
+
+
+# ══════════════════════════════════════════════════════════════════
+# Основной класс монитора
+# ══════════════════════════════════════════════════════════════════
 
 class InstagramMonitor:
     def __init__(self, db_path: str = "monitor.db", telegram_token: str = None):
         self.db_path = db_path
         self.telegram_token = telegram_token
         self.init_database()
-        
+
     def init_database(self):
-        """Инициализация базы данных"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        # Таблица конкурентов
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS competitors (
                 username TEXT PRIMARY KEY,
@@ -58,8 +251,7 @@ class InstagramMonitor:
                 total_posts_analyzed INTEGER DEFAULT 0
             )
         """)
-        
-        # Таблица постов с историей проверок
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS post_snapshots (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -72,8 +264,7 @@ class InstagramMonitor:
                 hours_since_posted REAL
             )
         """)
-        
-        # Таблица алертов
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS alerts (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -88,101 +279,68 @@ class InstagramMonitor:
                 sent_to_telegram BOOLEAN DEFAULT 0
             )
         """)
-        
+
         conn.commit()
         conn.close()
         logger.info("База данных инициализирована")
-    
+
     def add_competitor(self, username: str):
-        """Добавить конкурента для мониторинга"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
         cursor.execute("""
             INSERT OR IGNORE INTO competitors (username, added_at)
             VALUES (?, ?)
         """, (username, datetime.now()))
-        
         conn.commit()
         conn.close()
         logger.info(f"Конкурент @{username} добавлен")
-    
+
     def get_competitors(self) -> List[str]:
-        """Получить список всех конкурентов"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
         cursor.execute("SELECT username FROM competitors")
         competitors = [row[0] for row in cursor.fetchall()]
-        
         conn.close()
         return competitors
-    
+
     async def fetch_instagram_posts(self, username: str, limit: int = 10) -> List[Post]:
         """
-        Получить последние посты пользователя из Instagram
-        
-        ВАЖНО: Здесь используется упрощенный пример.
-        В реальности нужно использовать:
-        1. Instagram Graph API (требует Business аккаунт)
-        2. Сторонние API (Apify, RapidAPI)
-        3. Веб-скрапинг (может нарушать ToS)
+        Получить последние посты пользователя из Instagram через Apify.
+
+        При недоступности Apify (нет токена / ошибка сети) логирует ошибку
+        и возвращает пустой список, чтобы не ронять весь цикл мониторинга.
         """
-        
-        # Пример с использованием Apify API (платный, но надежный)
-        # URL = f"https://api.apify.com/v2/acts/apify~instagram-scraper/runs"
-        
-        # Для демонстрации создадим моковые данные
-        logger.info(f"Получение постов для @{username}")
-        
-        # Здесь должен быть реальный запрос к API
-        mock_posts = [
-            Post(
-                post_id=f"{username}_post_{i}",
-                username=username,
-                url=f"https://instagram.com/p/example{i}",
-                views=1000 * (i + 1),
-                likes=100 * (i + 1),
-                timestamp=datetime.now() - timedelta(hours=i)
-            )
-            for i in range(limit)
-        ]
-        
-        return mock_posts
-    
+        try:
+            return await fetch_instagram_posts_apify(username, limit=limit)
+        except RuntimeError as e:
+            logger.error(f"Ошибка Apify для @{username}: {e}")
+            return []
+        except asyncio.TimeoutError:
+            logger.error(f"Таймаут при запросе Apify для @{username}")
+            return []
+        except Exception as e:
+            logger.error(f"Неожиданная ошибка при получении постов @{username}: {e}")
+            return []
+
     def save_post_snapshot(self, post: Post):
-        """Сохранить снимок метрик поста"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
         hours_since_posted = (datetime.now() - post.timestamp).total_seconds() / 3600
-        
         cursor.execute("""
-            INSERT INTO post_snapshots 
+            INSERT INTO post_snapshots
             (post_id, username, post_url, views, likes, checked_at, hours_since_posted)
             VALUES (?, ?, ?, ?, ?, ?, ?)
         """, (
-            post.post_id,
-            post.username,
-            post.url,
-            post.views,
-            post.likes,
-            datetime.now(),
-            hours_since_posted
+            post.post_id, post.username, post.url,
+            post.views, post.likes, datetime.now(), hours_since_posted
         ))
-        
         conn.commit()
         conn.close()
-    
+
     def calculate_post_metrics(self, post: Post) -> PostMetrics:
-        """
-        Анализ скорости роста поста
-        Ключевой метод для детекции трендов!
-        """
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        # Получаем историю проверок этого поста
+
         cursor.execute("""
             SELECT views, checked_at, hours_since_posted
             FROM post_snapshots
@@ -190,64 +348,50 @@ class InstagramMonitor:
             ORDER BY checked_at DESC
             LIMIT 5
         """, (post.post_id,))
-        
         snapshots = cursor.fetchall()
-        
-        # Вычисляем текущую скорость роста просмотров
+
         current_hours = (datetime.now() - post.timestamp).total_seconds() / 3600
-        
+
         if len(snapshots) >= 2:
-            # Есть предыдущие проверки - считаем скорость за последний час
             prev_views = snapshots[1][0]
-            time_diff = (datetime.now() - datetime.fromisoformat(snapshots[1][1])).total_seconds() / 3600
-            
+            time_diff = (
+                datetime.now() - datetime.fromisoformat(snapshots[1][1])
+            ).total_seconds() / 3600
             views_per_hour = (post.views - prev_views) / time_diff if time_diff > 0 else 0
         else:
-            # Первая проверка - оцениваем среднюю скорость с момента публикации
             views_per_hour = post.views / current_hours if current_hours > 0 else 0
-        
-        # Получаем среднюю скорость для этого пользователя
+
         cursor.execute("""
             SELECT AVG(views / hours_since_posted) as avg_vph
             FROM post_snapshots
             WHERE username = ? AND hours_since_posted > 0 AND hours_since_posted < 24
         """, (post.username,))
-        
         result = cursor.fetchone()
-        avg_views_per_hour = result[0] if result[0] else 1000  # Дефолтное значение
-        
-        # Обновляем среднее значение для конкурента
+        avg_views_per_hour = result[0] if result[0] else 1000
+
         cursor.execute("""
-            UPDATE competitors
-            SET avg_views_per_hour = ?
-            WHERE username = ?
+            UPDATE competitors SET avg_views_per_hour = ? WHERE username = ?
         """, (avg_views_per_hour, post.username))
-        
         conn.commit()
         conn.close()
-        
-        # Вычисляем процент отклонения от нормы
-        if avg_views_per_hour > 0:
-            growth_rate = ((views_per_hour - avg_views_per_hour) / avg_views_per_hour) * 100
-        else:
-            growth_rate = 0
-        
-        # Критерии тренда:
-        # 1. Скорость роста выше средней на 150%+
-        # 2. Пост не старше 24 часов (свежий контент)
-        # 3. Минимум 2 проверки для подтверждения тренда
-        is_trending = (
-            growth_rate > 150 and 
-            current_hours < 24 and 
-            len(snapshots) >= 2 and
-            views_per_hour > avg_views_per_hour * 2
+
+        growth_rate = (
+            ((views_per_hour - avg_views_per_hour) / avg_views_per_hour) * 100
+            if avg_views_per_hour > 0 else 0
         )
-        
+
+        is_trending = (
+            growth_rate > 150
+            and current_hours < 24
+            and len(snapshots) >= 2
+            and views_per_hour > avg_views_per_hour * 2
+        )
+
         logger.info(
             f"Пост {post.post_id}: {views_per_hour:.0f} просм/ч "
             f"(среднее: {avg_views_per_hour:.0f}, рост: {growth_rate:.0f}%)"
         )
-        
+
         return PostMetrics(
             post_id=post.post_id,
             username=post.username,
@@ -256,51 +400,37 @@ class InstagramMonitor:
             views_per_hour=views_per_hour,
             avg_views_per_hour=avg_views_per_hour,
             growth_rate=growth_rate,
-            is_trending=is_trending
+            is_trending=is_trending,
         )
-    
-    def save_alert(self, metrics: PostMetrics):
-        """Сохранить алерт о трендовом посте"""
+
+    def save_alert(self, metrics: PostMetrics) -> bool:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        
-        # Проверяем, не отправляли ли уже алерт по этому посту
-        cursor.execute("""
-            SELECT id FROM alerts WHERE post_id = ?
-        """, (metrics.post_id,))
-        
+        cursor.execute("SELECT id FROM alerts WHERE post_id = ?", (metrics.post_id,))
         if cursor.fetchone():
             logger.info(f"Алерт для {metrics.post_id} уже существует")
             conn.close()
             return False
-        
         cursor.execute("""
             INSERT INTO alerts
-            (post_id, username, post_url, views, views_per_hour, 
+            (post_id, username, post_url, views, views_per_hour,
              avg_views_per_hour, growth_rate, detected_at)
             VALUES (?, ?, ?, ?, ?, ?, ?, ?)
         """, (
-            metrics.post_id,
-            metrics.username,
-            metrics.url,
-            metrics.current_views,
-            metrics.views_per_hour,
-            metrics.avg_views_per_hour,
-            metrics.growth_rate,
-            datetime.now()
+            metrics.post_id, metrics.username, metrics.url,
+            metrics.current_views, metrics.views_per_hour,
+            metrics.avg_views_per_hour, metrics.growth_rate, datetime.now()
         ))
-        
         conn.commit()
         conn.close()
         logger.info(f"🚀 Новый трендовый пост обнаружен: @{metrics.username}")
         return True
-    
+
     async def send_telegram_alert(self, metrics: PostMetrics, chat_id: str):
-        """Отправить уведомление в Telegram"""
         if not self.telegram_token:
             logger.warning("Telegram токен не настроен")
             return
-        
+
         message = f"""
 🚀 <b>Обнаружен вирусный контент!</b>
 
@@ -313,84 +443,69 @@ class InstagramMonitor:
 
 🔗 <a href="{metrics.url}">Открыть пост</a>
         """
-        
+
         url = f"https://api.telegram.org/bot{self.telegram_token}/sendMessage"
-        
+
         async with aiohttp.ClientSession() as session:
             try:
                 async with session.post(url, json={
                     "chat_id": chat_id,
                     "text": message.strip(),
-                    "parse_mode": "HTML"
+                    "parse_mode": "HTML",
                 }) as response:
                     if response.status == 200:
-                        logger.info(f"Уведомление отправлено в Telegram")
-                        
-                        # Помечаем как отправленное
+                        logger.info("Уведомление отправлено в Telegram")
                         conn = sqlite3.connect(self.db_path)
                         cursor = conn.cursor()
-                        cursor.execute("""
-                            UPDATE alerts SET sent_to_telegram = 1
-                            WHERE post_id = ?
-                        """, (metrics.post_id,))
+                        cursor.execute(
+                            "UPDATE alerts SET sent_to_telegram = 1 WHERE post_id = ?",
+                            (metrics.post_id,)
+                        )
                         conn.commit()
                         conn.close()
                     else:
                         logger.error(f"Ошибка отправки в Telegram: {response.status}")
             except Exception as e:
                 logger.error(f"Ошибка при отправке уведомления: {e}")
-    
+
     async def monitor_cycle(self, telegram_chat_id: Optional[str] = None):
-        """Один цикл мониторинга всех конкурентов"""
         competitors = self.get_competitors()
-        
         if not competitors:
             logger.warning("Нет конкурентов для мониторинга")
             return
-        
+
         logger.info(f"Начало цикла мониторинга ({len(competitors)} аккаунтов)")
-        
+
         for username in competitors:
             try:
-                # Получаем свежие посты
                 posts = await self.fetch_instagram_posts(username, limit=5)
-                
-                # Анализируем только посты младше 48 часов
+
                 recent_posts = [
-                    p for p in posts 
+                    p for p in posts
                     if (datetime.now() - p.timestamp).total_seconds() / 3600 < 48
                 ]
-                
+
                 for post in recent_posts:
-                    # Сохраняем текущее состояние
                     self.save_post_snapshot(post)
-                    
-                    # Анализируем метрики
                     metrics = self.calculate_post_metrics(post)
-                    
-                    # Если обнаружен тренд
                     if metrics.is_trending:
                         if self.save_alert(metrics):
-                            # Отправляем уведомление
                             if telegram_chat_id:
                                 await self.send_telegram_alert(metrics, telegram_chat_id)
-                
-                # Пауза между аккаунтами
+
                 await asyncio.sleep(2)
-                
+
             except Exception as e:
                 logger.error(f"Ошибка при обработке @{username}: {e}")
-        
-        logger.info("Цикл мониторинга завершен")
-    
+
+        logger.info("Цикл мониторинга завершён")
+
     async def run_continuous_monitoring(
-        self, 
+        self,
         interval_minutes: int = 60,
-        telegram_chat_id: Optional[str] = None
+        telegram_chat_id: Optional[str] = None,
     ):
-        """Непрерывный мониторинг с заданным интервалом"""
         logger.info(f"Запуск непрерывного мониторинга (интервал: {interval_minutes} мин)")
-        
         while True:
             try:
                 await self.monitor_cycle(telegram_chat_id)
@@ -401,27 +516,27 @@ class InstagramMonitor:
                 break
             except Exception as e:
                 logger.error(f"Ошибка в цикле мониторинга: {e}")
-                await asyncio.sleep(60)  # Пауза перед повтором
+                await asyncio.sleep(60)
 
 
+# ══════════════════════════════════════════════════════════════════
 # API для фронтенда
+# ══════════════════════════════════════════════════════════════════
+
 class MonitorAPI:
     def __init__(self, monitor: InstagramMonitor):
         self.monitor = monitor
-    
+
     def get_alerts(self, limit: int = 10) -> List[Dict]:
-        """Получить последние алерты для фронтенда"""
         conn = sqlite3.connect(self.monitor.db_path)
         cursor = conn.cursor()
-        
         cursor.execute("""
-            SELECT username, post_url, views, views_per_hour, 
+            SELECT username, post_url, views, views_per_hour,
                    avg_views_per_hour, growth_rate, detected_at
             FROM alerts
             ORDER BY detected_at DESC
             LIMIT ?
         """, (limit,))
-        
         alerts = []
         for row in cursor.fetchall():
             alerts.append({
@@ -431,52 +546,45 @@ class MonitorAPI:
                 "viewsPerHour": round(row[3]),
                 "avgViewsPerHour": round(row[4]),
                 "growth": round(row[5]),
-                "timestamp": row[6]
+                "timestamp": row[6],
             })
-        
         conn.close()
         return alerts
-    
+
     def get_competitors_stats(self) -> List[Dict]:
-        """Получить статистику по конкурентам"""
         conn = sqlite3.connect(self.monitor.db_path)
         cursor = conn.cursor()
-        
         cursor.execute("""
-            SELECT c.username, c.avg_views_per_hour, 
+            SELECT c.username, c.avg_views_per_hour,
                    COUNT(DISTINCT ps.post_id) as total_posts
             FROM competitors c
             LEFT JOIN post_snapshots ps ON c.username = ps.username
             GROUP BY c.username
         """)
-        
         competitors = []
         for row in cursor.fetchall():
             competitors.append({
                 "username": row[0],
                 "avgViews": round(row[1]) if row[1] else 0,
-                "avgLikes": round(row[1] * 0.08) if row[1] else 0,  # ~8% conversion
-                "lastChecked": datetime.now().isoformat()
+                "avgLikes": round(row[1] * 0.08) if row[1] else 0,
+                "lastChecked": datetime.now().isoformat(),
             })
-        
         conn.close()
         return competitors
 
 
-# Пример использования
+# ══════════════════════════════════════════════════════════════════
+# Точка входа
+# ══════════════════════════════════════════════════════════════════
+
 if __name__ == "__main__":
-    # Настройки
-    TELEGRAM_BOT_TOKEN = "YOUR_BOT_TOKEN_HERE"  # Получите у @BotFather
-    TELEGRAM_CHAT_ID = "YOUR_CHAT_ID"  # Ваш Telegram ID
-    
-    # Инициализация
-    monitor = InstagramMonitor(
-        db_path="instagram_monitor.db",
-        telegram_token=TELEGRAM_BOT_TOKEN
-    )
-    
-    # Запуск мониторинга (проверка каждый час)
+    TELEGRAM_BOT_TOKEN = os.environ.get("TELEGRAM_BOT_TOKEN", "YOUR_BOT_TOKEN_HERE")
+    TELEGRAM_CHAT_ID   = os.environ.get("TELEGRAM_CHAT_ID",   "YOUR_CHAT_ID")
+    DB_PATH            = os.environ.get("DB_PATH",             "instagram_monitor.db")
+
+    monitor = InstagramMonitor(db_path=DB_PATH, telegram_token=TELEGRAM_BOT_TOKEN)
+
     asyncio.run(monitor.run_continuous_monitoring(
         interval_minutes=60,
-        telegram_chat_id=TELEGRAM_CHAT_ID
+        telegram_chat_id=TELEGRAM_CHAT_ID,
     ))

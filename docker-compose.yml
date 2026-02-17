@@ -1,0 +1,50 @@
+services:
+
+  # ─────────────────────────────────────────────
+  # Flask API + фоновый мониторинг Instagram
+  # ─────────────────────────────────────────────
+  api:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: instagram_monitor_api
+    restart: unless-stopped
+    environment:
+      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
+      - TELEGRAM_CHAT_ID=${TELEGRAM_CHAT_ID}
+      - APIFY_TOKEN=${APIFY_TOKEN}
+      - DB_PATH=/data/instagram_monitor.db
+    volumes:
+      - db_data:/data          # SQLite база данных
+    expose:
+      - "5000"                 # Только внутри Docker-сети, снаружи закрыт
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  # ─────────────────────────────────────────────
+  # Caddy — раздаёт HTML и проксирует /api/*
+  # Автоматически получает Let's Encrypt сертификат
+  # ─────────────────────────────────────────────
+  caddy:
+    image: caddy:2-alpine
+    container_name: instagram_monitor_caddy
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"          # HTTP/3 (QUIC)
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - ./instagram-monitor.html:/srv/instagram-monitor.html:ro
+      - caddy_data:/data       # Сертификаты Let's Encrypt
+      - caddy_config:/config
+    depends_on:
+      - api
+
+volumes:
+  db_data:
+  caddy_data:
+  caddy_config:
