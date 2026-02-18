@@ -219,7 +219,7 @@ async def fetch_instagram_posts_apify(
                 body = await resp.text()
                 raise RuntimeError(f"[Apify] Ошибка сервера ({resp.status}): {body}")
 
-            if resp.status != 200:
+            if resp.status > 299:
                 body = await resp.text()
                 raise RuntimeError(f"[Apify] Неожиданный статус {resp.status}: {body}")
 
