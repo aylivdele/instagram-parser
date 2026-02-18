@@ -321,8 +321,8 @@
 
     <div class="add-section">
         <div class="input-group">
-            <label>Username or Link Instagram</label>
-            <input type="text" id="usernameInput" placeholder="например: natgeo или https://www.instagram.com/natgeo" onkeypress="handleEnter(event)">
+            <label>Username Instagram</label>
+            <input type="text" id="usernameInput" placeholder="например: natgeo" onkeypress="handleEnter(event)">
         </div>
         <button class="btn btn-primary" onclick="addCompetitor()">
             ➕ Добавить конкурента
@@ -426,15 +426,27 @@
         }
 
         // ═══════════════════════════════════════════════════════════════
-        // Конфигурация API
+        // Конфигурация API и идентификация пользователя
         // ═══════════════════════════════════════════════════════════════
-        // Автоопределение API URL:
-        // - В браузере: используем относительный путь (тот же домен)
-        // - В Telegram Mini App: можно задать явно в строке ниже
-        const API_URL = '/api';
+        const API_URL = window.location.origin + '/api';
         
-        // Если нужен другой URL для Mini App, раскомментируйте:
-        // const API_URL = isTelegramMiniApp ? 'https://your-domain.com/api' : '/api';
+        // Получение user_id
+        let USER_ID = null;
+        
+        if (isTelegramMiniApp && tg.initDataUnsafe && tg.initDataUnsafe.user) {
+            // В Telegram Mini App берём ID из Telegram
+            USER_ID = `telegram_${tg.initDataUnsafe.user.id}`;
+            console.log('User ID из Telegram:', USER_ID);
+        } else {
+            // В обычном браузере используем localStorage или просим ввести
+            USER_ID = localStorage.getItem('instagram_monitor_user_id');
+            if (!USER_ID) {
+                // Генерируем случайный ID для тестов
+                USER_ID = `browser_${Math.random().toString(36).substr(2, 9)}`;
+                localStorage.setItem('instagram_monitor_user_id', USER_ID);
+            }
+            console.log('User ID (браузер):', USER_ID);
+        }
 
         // ═══════════════════════════════════════════════════════════════
         // Данные
@@ -447,7 +459,9 @@
         // ═══════════════════════════════════════════════════════════════
         async function fetchCompetitors() {
             try {
-                const response = await fetch(`${API_URL}/competitors`);
+                const response = await fetch(`${API_URL}/competitors`, {
+                    headers: { 'X-User-Id': USER_ID }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -462,7 +476,9 @@
 
         async function fetchAlerts() {
             try {
-                const response = await fetch(`${API_URL}/alerts`);
+                const response = await fetch(`${API_URL}/alerts`, {
+                    headers: { 'X-User-Id': USER_ID }
+                });
                 const data = await response.json();
                 
                 if (data.success) {
@@ -475,34 +491,19 @@
         }
 
         async function addCompetitor() {
-            let username = document.getElementById('usernameInput').value.trim();
+            const username = document.getElementById('usernameInput').value.trim();
             
             if (!username) {
                 showAlert('Введите username');
                 return;
             }
 
-            const linkPrefix = 'https://www.instagram.com/';
-
-            if (username.startsWith(linkPrefix)) {
-                let paramIndex = username.indexOf('?', linkPrefix.length)
-                let slashIndex = username.indexOf('/', linkPrefix.length)
-                let endIndex = username.length
-                if (paramIndex !== -1) {
-                    endIndex = paramIndex
-                }
-                if (slashIndex !== -1) {
-                    endIndex = Math.min(endIndex, slashIndex)
-                }
-
-                username = username.substring(linkPrefix.length, endIndex)
-            }
-
             try {
                 const response = await fetch(`${API_URL}/competitors`, {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json'
+                        'Content-Type': 'application/json',
+                        'X-User-Id': USER_ID
                     },
                     body: JSON.stringify({ username })
                 });
@@ -527,7 +528,8 @@
                 if (confirmed) {
                     try {
                         const response = await fetch(`${API_URL}/competitors/${username}`, {
-                            method: 'DELETE'
+                            method: 'DELETE',
+                            headers: { 'X-User-Id': USER_ID }
                         });
                         
                         const data = await response.json();
@@ -655,7 +657,31 @@
         // ═══════════════════════════════════════════════════════════════
         // Инициализация
         // ═══════════════════════════════════════════════════════════════
+        async function registerUser() {
+            // Регистрируем/обновляем пользователя при первом запуске
+            const telegramChatId = isTelegramMiniApp && tg.initDataUnsafe && tg.initDataUnsafe.user 
+                ? tg.initDataUnsafe.user.id.toString()
+                : null;
+            
+            try {
+                await fetch(`${API_URL}/register`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': USER_ID
+                    },
+                    body: JSON.stringify({
+                        user_id: USER_ID,
+                        telegram_chat_id: telegramChatId
+                    })
+                });
+            } catch (error) {
+                console.error('Ошибка регистрации пользователя:', error);
+            }
+        }
+        
         async function init() {
+            await registerUser();
             await fetchCompetitors();
             await fetchAlerts();
             updateLastCheck();

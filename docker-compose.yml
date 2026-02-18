@@ -10,14 +10,29 @@ services:
     container_name: instagram_monitor_api
     restart: unless-stopped
     environment:
+      # Telegram
       - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      - TELEGRAM_CHAT_IDS=${TELEGRAM_CHAT_IDS}
+      
+      # Apify
       - APIFY_TOKEN=${APIFY_TOKEN}
+      
+      # Параметры мониторинга
+      - POSTS_LIMIT=${POSTS_LIMIT:-10}
+      - POSTS_MAX_AGE_HOURS=${POSTS_MAX_AGE_HOURS:-48}
+      - MONITORING_INTERVAL_MINUTES=${MONITORING_INTERVAL_MINUTES:-60}
+      
+      # Критерии детекции трендов
+      - TREND_GROWTH_THRESHOLD=${TREND_GROWTH_THRESHOLD:-150}
+      - TREND_MAX_POST_AGE_HOURS=${TREND_MAX_POST_AGE_HOURS:-24}
+      - TREND_MIN_SNAPSHOTS=${TREND_MIN_SNAPSHOTS:-2}
+      - TREND_SPEED_MULTIPLIER=${TREND_SPEED_MULTIPLIER:-2.0}
+      
+      # База данных
       - DB_PATH=/data/instagram_monitor.db
     volumes:
-      - db_data:/data          # SQLite база данных
+      - db_data:/data
     expose:
-      - "5000"                 # Только внутри Docker-сети, снаружи закрыт
+      - "5000"
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
       interval: 30s
@@ -26,7 +41,6 @@ services:
 
   # ─────────────────────────────────────────────
   # Caddy — раздаёт HTML и проксирует /api/*
-  # Автоматически получает Let's Encrypt сертификат
   # ─────────────────────────────────────────────
   caddy:
     image: caddy:2-alpine
@@ -35,11 +49,11 @@ services:
     ports:
       - "80:80"
       - "443:443"
-      - "443:443/udp"          # HTTP/3 (QUIC)
+      - "443:443/udp"
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./instagram-monitor.html:/srv/instagram-monitor.html:ro
-      - caddy_data:/data       # Сертификаты Let's Encrypt
+      - caddy_data:/data
       - caddy_config:/config
     depends_on:
       - api
