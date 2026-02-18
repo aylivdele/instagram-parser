@@ -405,7 +405,7 @@
         <div id="foldersList"></div>
         <div class="add-section">
             <div class="input-group">
-                <label>Название папки</label>
+                <label>Создание папки</label>
                 <input type="text" id="folder-name" class="add-folder-input" placeholder="Название папки" />
             </div>
             <button class="add-folder-btn" onclick="
@@ -751,6 +751,7 @@
             selectedFolderId = selectedFolderId === folderId ? null : folderId;
             renderFolders();
             renderCompetitors();
+            renderAlerts();
         }
         
         function renderCompetitors() {
@@ -806,21 +807,33 @@
         function renderAlerts() {
             const list = document.getElementById('alertsList');
             
-            if (alerts.length === 0) {
-                list.innerHTML = `
+            const emptyContent = `
                     <div class="empty-state">
                         <div class="empty-icon">🎯</div>
                         <div>Пока нет вирусного контента</div>
                     </div>
-                `;
+                `
+            if (alerts.length === 0) {
+                list.innerHTML = emptyContent;
                 return;
             }
 
-            list.innerHTML = alerts.map(alert => `
+            list.innerHTML = alerts.map(alert => {
+                
+                const competitor = competitors.find(c => c.username === a.username)
+                if (selectedFolderId && competitor && competitor.folderId !== selectedFolderId) {
+                    return ''
+                }
+                // Показываем badge папки только когда отображаем всех
+                const folder = folders.find(f => f.id === competitor.folderId);
+                const folderBadge = folder && selectedFolderId === null
+                    ? `<span class="folder-badge" style="background: ${folder.color}20; color: ${folder.color}">${folder.name}</span>`
+                    : '';
+                return (`
                 <div class="alert-card">
                     <div class="alert-header">
                         <div class="alert-icon">🚀</div>
-                        <div class="alert-title">@${alert.username}</div>
+                        <div class="alert-title">@${alert.username}${folderBadge}</div>
                     </div>
                     <div class="alert-subtitle">
                         Рост: +${alert.growth}% от обычного
@@ -833,7 +846,10 @@
                         Открыть пост →
                     </a>
                 </div>
-            `).join('');
+            `)}).join('');
+            if (list.innerHTML.trim().length === 0) {
+                list.innerHTML = emptyContent;
+            }
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -869,8 +885,8 @@
         // Периодическое обновление
         // ═══════════════════════════════════════════════════════════════
         setInterval(() => {
-            fetchAlerts();
             fetchCompetitors();
+            fetchAlerts();
             updateLastCheck();
         }, 60000);  // Каждую минуту
 
