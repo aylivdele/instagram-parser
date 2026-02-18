@@ -403,9 +403,21 @@
     <div class="folders-section">
         <h2 class="section-title">📁 Папки</h2>
         <div id="foldersList"></div>
-        <button class="add-folder-btn" onclick="showAddFolderPrompt()">
-            ➕ Создать папку
-        </button>
+        <div class="add-section">
+            <div class="input-group">
+                <label>Название папки</label>
+                <input type="text" id="folder-name" class="add-folder-input" placeholder="Название папки" />
+            </div>
+            <button class="add-folder-btn" onclick="
+                const name = document.getElementById('folder-name').value
+                if (name && name.trim()) {
+                    createFolder(name.trim());
+                }
+                ">
+                ➕ Создать папку
+            </button>
+            
+        </div>
     </div>
 
     <div class="competitors-list">
@@ -470,8 +482,7 @@
         }
 
         function showConfirm(message, callback) {
-            // if (isTelegramMiniApp) {
-            if (false) {
+            if (isTelegramMiniApp) {
                 tg.showConfirm(message, callback);
             } else {
                 showBrowserModal('Подтвердите действие', message, [
@@ -741,14 +752,6 @@
             renderFolders();
             renderCompetitors();
         }
-
-        function showAddFolderPrompt() {
-            const name = prompt('Название папки:');
-            if (name && name.trim()) {
-                createFolder(name.trim());
-            }
-        }
-
         
         function renderCompetitors() {
             const list = document.getElementById('competitorsList');
