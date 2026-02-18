@@ -313,6 +313,16 @@ class InstagramMonitor:
         conn.close()
         logger.info(f"Конкурент @{username} добавлен")
 
+    def remove_competitor(self, username: str):
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            DELETE FROM competitors WHERE username = ?
+        """, (username))
+        conn.commit()
+        conn.close()
+        logger.info(f"Конкурент @{username} удален")
+
     def get_competitors(self) -> List[str]:
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()

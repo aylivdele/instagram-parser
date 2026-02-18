@@ -76,6 +76,11 @@ def add_competitor():
 @app.route('/api/competitors/<username>', methods=['DELETE'])
 def remove_competitor(username):
     try:
+        data = request.json
+        username = data.get('username', '').strip()
+        if not username:
+            return jsonify({"success": False, "error": "Username обязателен"}), 400
+        monitor.remove_competitor(username)
         return jsonify({"success": True, "message": f"Конкурент @{username} удален"})
     except Exception as e:
         logger.error(f"Ошибка в DELETE /api/competitors: {e}")
