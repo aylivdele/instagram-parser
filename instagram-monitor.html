@@ -311,6 +311,73 @@
             background: #f0f0f0;
             color: #333;
         }
+/* Папки */
+.folders-section {
+    margin-bottom: 16px;
+}
+
+.folder-item {
+    background: var(--tg-theme-secondary-bg-color, #f5f5f5);
+    border-radius: 12px;
+    padding: 12px 16px;
+    margin-bottom: 8px;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    cursor: pointer;
+    transition: opacity 0.2s;
+}
+
+.folder-item:active {
+    opacity: 0.7;
+}
+
+.folder-item.active {
+    background: var(--tg-theme-button-color, #0088cc);
+    color: white;
+}
+
+.folder-icon {
+    font-size: 20px;
+}
+
+.folder-name {
+    flex: 1;
+    font-weight: 500;
+}
+
+.folder-count {
+    font-size: 12px;
+    opacity: 0.7;
+}
+
+.btn-icon {
+    padding: 6px;
+    background: rgba(0,0,0,0.1);
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.add-folder-btn {
+    width: 100%;
+    padding: 12px;
+    background: transparent;
+    border: 2px dashed var(--tg-theme-hint-color, #ddd);
+    border-radius: 12px;
+    color: var(--tg-theme-hint-color, #999);
+    cursor: pointer;
+    font-size: 14px;
+}
+
+.folder-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-left: 8px;
+}
     </style>
 </head>
 <body>
@@ -336,6 +403,13 @@
 
     <div class="competitors-list">
         <h2 class="section-title">👥 Отслеживаемые аккаунты</h2>
+        <div class="folders-section">
+            <h2 class="section-title">📁 Папки</h2>
+            <div id="foldersList"></div>
+            <button class="add-folder-btn" onclick="showAddFolderPrompt()">
+                ➕ Создать папку
+            </button>
+        </div>
         <div id="competitorsList"></div>
     </div>
 
@@ -368,6 +442,9 @@
             tg.ready();
             tg.expand();
         }
+
+        let folders = [];
+        let selectedFolderId = null;
 
         // ═══════════════════════════════════════════════════════════════
         // Универсальные обёртки для уведомлений
@@ -505,7 +582,10 @@
                         'Content-Type': 'application/json',
                         'X-User-Id': USER_ID
                     },
-                    body: JSON.stringify({ username })
+                    body: JSON.stringify({ 
+                        username,
+                        folder_id: selectedFolderId
+                    })
                 });
 
                 const data = await response.json();
@@ -547,40 +627,153 @@
             });
         }
 
+        async function fetchFolders() {
+            try {
+                const response = await fetch(`${API_URL}/folders`, {
+                    headers: { 'X-User-Id': USER_ID }
+                });
+                const data = await response.json();
+                if (data.success) {
+                    folders = data.data;
+                    renderFolders();
+                }
+            } catch (error) {
+                console.error('Ошибка загрузки папок:', error);
+            }
+        }
+
+        async function createFolder(name, color = '#0088cc', icon = '📁') {
+            try {
+                const response = await fetch(`${API_URL}/folders`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-User-Id': USER_ID
+                    },
+                    body: JSON.stringify({ name, color, icon })
+                });
+                const data = await response.json();
+                if (data.success) {
+                    await fetchFolders();
+                    return data.data.id;
+                } else {
+                    showAlert(data.error || 'Ошибка создания папки');
+                }
+            } catch (error) {
+                console.error('Ошибка:', error);
+                showAlert('Ошибка подключения к серверу');
+            }
+        }
+
+        async function deleteFolder(folderId, folderName) {
+            showConfirm(`Удалить папку "${folderName}"?`, async (confirmed) => {
+                if (confirmed) {
+                    try {
+                        const response = await fetch(`${API_URL}/folders/${folderId}`, {
+                            method: 'DELETE',
+                            headers: { 'X-User-Id': USER_ID }
+                        });
+                        if (response.ok) {
+                            if (selectedFolderId === folderId) {
+                                selectedFolderId = null;
+                            }
+                            await fetchFolders();
+                            await fetchCompetitors();
+                        }
+                    } catch (error) {
+                        console.error('Ошибка удаления папки:', error);
+                    }
+                }
+            });
+        }
+
         // ═══════════════════════════════════════════════════════════════
         // Рендеринг UI
         // ═══════════════════════════════════════════════════════════════
+
+        
+
+        function renderFolders() {
+            const list = document.getElementById('foldersList');
+            
+            if (folders.length === 0) {
+                list.innerHTML = '';
+                return;
+            }
+
+            list.innerHTML = folders.map(f => `
+                <div class="folder-item ${selectedFolderId === f.id ? 'active' : ''}" 
+                    onclick="selectFolder(${f.id})">
+                    <div class="folder-icon">${f.icon}</div>
+                    <div class="folder-name">${f.name}</div>
+                    <div class="folder-count">${f.count}</div>
+                    <button class="btn-icon" onclick="event.stopPropagation(); deleteFolder(${f.id}, '${f.name}')">🗑️</button>
+                </div>
+            `).join('');
+        }
+
+        function selectFolder(folderId) {
+            selectedFolderId = selectedFolderId === folderId ? null : folderId;
+            renderFolders();
+            renderCompetitors();
+        }
+
+        function showAddFolderPrompt() {
+            const name = prompt('Название папки:');
+            if (name && name.trim()) {
+                createFolder(name.trim());
+            }
+        }
+
+        
         function renderCompetitors() {
             const list = document.getElementById('competitorsList');
             
-            if (competitors.length === 0) {
+            // Фильтруем по выбранной папке
+            let filteredCompetitors = competitors;
+            if (selectedFolderId !== null) {
+                filteredCompetitors = competitors.filter(c => c.folderId === selectedFolderId);
+            }
+            
+            if (filteredCompetitors.length === 0) {
+                const message = selectedFolderId !== null 
+                    ? 'В этой папке пока нет конкурентов'
+                    : 'Добавьте первого конкурента';
                 list.innerHTML = `
                     <div class="empty-state">
                         <div class="empty-icon">📭</div>
-                        <div>Добавьте первого конкурента</div>
+                        <div>${message}</div>
                     </div>
                 `;
                 return;
             }
 
-            list.innerHTML = competitors.map(c => `
-                <div class="competitor-card">
-                    <div class="competitor-header">
-                        <div class="competitor-name">@${c.username}</div>
-                        <button class="btn-remove" onclick="removeCompetitor('${c.username}')">
-                            Удалить
-                        </button>
-                    </div>
-                    <div class="stats">
-                        <div class="stat-item">
-                            Ср. просмотры: <span class="stat-value">${formatNumber(c.avgViews)}</span>
+            list.innerHTML = filteredCompetitors.map(c => {
+                // Показываем badge папки только когда отображаем всех
+                const folder = folders.find(f => f.id === c.folderId);
+                const folderBadge = folder && selectedFolderId === null
+                    ? `<span class="folder-badge" style="background: ${folder.color}20; color: ${folder.color}">${folder.name}</span>`
+                    : '';
+                    
+                return `
+                    <div class="competitor-card">
+                        <div class="competitor-header">
+                            <div class="competitor-name">@${c.username}${folderBadge}</div>
+                            <button class="btn-remove" onclick="removeCompetitor('${c.username}')">
+                                Удалить
+                            </button>
                         </div>
-                        <div class="stat-item">
-                            Ср. лайки: <span class="stat-value">${formatNumber(c.avgLikes)}</span>
+                        <div class="stats">
+                            <div class="stat-item">
+                                Ср. просмотры: <span class="stat-value">${formatNumber(c.avgViews)}</span>
+                            </div>
+                            <div class="stat-item">
+                                Ср. лайки: <span class="stat-value">${formatNumber(c.avgLikes)}</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-            `).join('');
+                `;
+            }).join('');
         }
 
         function renderAlerts() {
@@ -682,6 +875,7 @@
         
         async function init() {
             await registerUser();
+            await fetchFolders();
             await fetchCompetitors();
             await fetchAlerts();
             updateLastCheck();

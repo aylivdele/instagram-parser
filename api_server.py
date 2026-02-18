@@ -104,6 +104,108 @@ def register_user():
         return jsonify({"success": False, "error": str(e)}), 500
 
 
+# ── Endpoints для папок ──────────────────────────────────────────
+
+@app.route('/api/folders', methods=['GET'])
+def get_folders():
+    """Получить все папки пользователя"""
+    try:
+        user_id = get_user_id(request)
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id не указан"}), 401
+        
+        folders = monitor.get_folders(user_id)
+        return jsonify({"success": True, "data": folders})
+    except Exception as e:
+        logger.error(f"Ошибка в /api/folders: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/folders', methods=['POST'])
+def create_folder():
+    """Создать новую папку"""
+    try:
+        user_id = get_user_id(request)
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id не указан"}), 401
+        
+        data = request.json
+        name = data.get('name', '').strip()
+        color = data.get('color', '#0088cc')
+        icon = data.get('icon', '📁')
+        
+        if not name:
+            return jsonify({"success": False, "error": "Имя папки обязательно"}), 400
+        
+        folder_id = monitor.create_folder(user_id, name, color, icon)
+        
+        return jsonify({
+            "success": True,
+            "data": {"id": folder_id, "name": name, "color": color, "icon": icon}
+        })
+    except Exception as e:
+        logger.error(f"Ошибка в POST /api/folders: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/folders/<int:folder_id>', methods=['PATCH'])
+def update_folder(folder_id):
+    """Обновить папку"""
+    try:
+        user_id = get_user_id(request)
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id не указан"}), 401
+        
+        data = request.json
+        name = data.get('name')
+        color = data.get('color')
+        icon = data.get('icon')
+        
+        monitor.update_folder(user_id, folder_id, name, color, icon)
+        
+        return jsonify({"success": True, "message": "Папка обновлена"})
+    except Exception as e:
+        logger.error(f"Ошибка в PATCH /api/folders: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/folders/<int:folder_id>', methods=['DELETE'])
+def delete_folder(folder_id):
+    """Удалить папку"""
+    try:
+        user_id = get_user_id(request)
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id не указан"}), 401
+        
+        monitor.delete_folder(user_id, folder_id)
+        
+        return jsonify({"success": True, "message": "Папка удалена"})
+    except Exception as e:
+        logger.error(f"Ошибка в DELETE /api/folders: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/folders/reorder', methods=['POST'])
+def reorder_folders():
+    """Изменить порядок папок"""
+    try:
+        user_id = get_user_id(request)
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id не указан"}), 401
+        
+        data = request.json
+        folder_ids = data.get('folder_ids', [])
+        
+        monitor.reorder_folders(user_id, folder_ids)
+        
+        return jsonify({"success": True, "message": "Порядок обновлён"})
+    except Exception as e:
+        logger.error(f"Ошибка в POST /api/folders/reorder: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+# ── Endpoints для конкурентов ─────────────────────────────────────
+
 @app.route('/api/competitors', methods=['GET'])
 def get_competitors():
     """Получить список конкурентов пользователя"""
@@ -129,11 +231,12 @@ def add_competitor():
         
         data = request.json
         username = data.get('username', '').strip()
+        folder_id = data.get('folder_id')
         
         if not username:
             return jsonify({"success": False, "error": "Username обязателен"}), 400
         
-        monitor.add_competitor(user_id, username)
+        monitor.add_competitor(user_id, username, folder_id)
         
         return jsonify({
             "success": True,
@@ -180,6 +283,25 @@ def get_alerts():
         return jsonify({"success": True, "data": alerts})
     except Exception as e:
         logger.error(f"Ошибка в /api/alerts: {e}")
+        return jsonify({"success": False, "error": str(e)}), 500
+
+
+@app.route('/api/competitors/<username>/move', methods=['POST'])
+def move_competitor(username):
+    """Переместить конкурента в другую папку"""
+    try:
+        user_id = get_user_id(request)
+        if not user_id:
+            return jsonify({"success": False, "error": "user_id не указан"}), 401
+        
+        data = request.json
+        folder_id = data.get('folder_id')  # None = убрать из папки
+        
+        monitor.move_competitor_to_folder(user_id, username, folder_id)
+        
+        return jsonify({"success": True, "message": f"Конкурент @{username} перемещён"})
+    except Exception as e:
+        logger.error(f"Ошибка в POST /api/competitors/<username>/move: {e}")
         return jsonify({"success": False, "error": str(e)}), 500
 
 

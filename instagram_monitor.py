@@ -245,22 +245,49 @@ class InstagramMonitor:
             )
         """)
 
+        # Таблица папок для организации конкурентов
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS folders (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                user_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                color TEXT DEFAULT '#0088cc',
+                icon TEXT DEFAULT '📁',
+                created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                sort_order INTEGER DEFAULT 0,
+                UNIQUE(user_id, name),
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+            )
+        """)
+
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_folders_user 
+            ON folders(user_id, sort_order)
+        """)
+
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS competitors (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 user_id TEXT NOT NULL,
                 username TEXT NOT NULL,
+                folder_id INTEGER,
                 added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 avg_views_per_hour REAL DEFAULT 0,
                 total_posts_analyzed INTEGER DEFAULT 0,
                 UNIQUE(user_id, username),
-                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE
+                FOREIGN KEY (user_id) REFERENCES users(user_id) ON DELETE CASCADE,
+                FOREIGN KEY (folder_id) REFERENCES folders(id) ON DELETE SET NULL
             )
         """)
 
         cursor.execute("""
             CREATE INDEX IF NOT EXISTS idx_competitors_user 
             ON competitors(user_id)
+        """)
+        
+        cursor.execute("""
+            CREATE INDEX IF NOT EXISTS idx_competitors_folder 
+            ON competitors(user_id, folder_id)
         """)
 
         cursor.execute("""
@@ -339,17 +366,132 @@ class InstagramMonitor:
         conn.close()
         return result[0] if result else None
 
-    def add_competitor(self, user_id: str, username: str):
+    # ── Управление папками ─────────────────────────────────────────
+
+    def create_folder(self, user_id: str, name: str, color: str = '#0088cc', icon: str = '📁') -> int:
+        """Создать новую папку"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        # Получаем максимальный sort_order для добавления в конец
+        cursor.execute(
+            "SELECT COALESCE(MAX(sort_order), 0) + 1 FROM folders WHERE user_id = ?",
+            (user_id,)
+        )
+        sort_order = cursor.fetchone()[0]
+        
+        cursor.execute("""
+            INSERT INTO folders (user_id, name, color, icon, sort_order)
+            VALUES (?, ?, ?, ?, ?)
+        """, (user_id, name, color, icon, sort_order))
+        
+        folder_id = cursor.lastrowid
+        conn.commit()
+        conn.close()
+        logger.info(f"[{user_id}] Создана папка '{name}'")
+        return folder_id
+
+    def update_folder(self, user_id: str, folder_id: int, name: str = None, color: str = None, icon: str = None):
+        """Обновить папку"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        updates = []
+        params = []
+        
+        if name is not None:
+            updates.append("name = ?")
+            params.append(name)
+        if color is not None:
+            updates.append("color = ?")
+            params.append(color)
+        if icon is not None:
+            updates.append("icon = ?")
+            params.append(icon)
+        
+        if not updates:
+            conn.close()
+            return
+        
+        params.extend([user_id, folder_id])
+        query = f"UPDATE folders SET {', '.join(updates)} WHERE user_id = ? AND id = ?"
+        
+        cursor.execute(query, params)
+        conn.commit()
+        conn.close()
+
+    def delete_folder(self, user_id: str, folder_id: int):
+        """Удалить папку (конкуренты переместятся в "Без папки")"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("DELETE FROM folders WHERE user_id = ? AND id = ?", (user_id, folder_id))
+        conn.commit()
+        conn.close()
+        logger.info(f"[{user_id}] Удалена папка {folder_id}")
+
+    def get_folders(self, user_id: str) -> List[Dict]:
+        """Получить все папки пользователя"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute("""
+            SELECT id, name, color, icon, sort_order,
+                   (SELECT COUNT(*) FROM competitors WHERE folder_id = folders.id) as count
+            FROM folders
+            WHERE user_id = ?
+            ORDER BY sort_order
+        """, (user_id,))
+        
+        folders = []
+        for row in cursor.fetchall():
+            folders.append({
+                "id": row[0],
+                "name": row[1],
+                "color": row[2],
+                "icon": row[3],
+                "sort_order": row[4],
+                "count": row[5],
+            })
+        conn.close()
+        return folders
+
+    def reorder_folders(self, user_id: str, folder_ids: List[int]):
+        """Изменить порядок папок"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        
+        for order, folder_id in enumerate(folder_ids):
+            cursor.execute(
+                "UPDATE folders SET sort_order = ? WHERE user_id = ? AND id = ?",
+                (order, user_id, folder_id)
+            )
+        
+        conn.commit()
+        conn.close()
+
+    # ── Управление конкурентами ────────────────────────────────────
+
+    def add_competitor(self, user_id: str, username: str, folder_id: int = None):
         """Добавить конкурента для конкретного пользователя"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
         cursor.execute("""
-            INSERT OR IGNORE INTO competitors (user_id, username, added_at)
-            VALUES (?, ?, ?)
-        """, (user_id, username, datetime.now()))
+            INSERT OR IGNORE INTO competitors (user_id, username, folder_id, added_at)
+            VALUES (?, ?, ?, ?)
+        """, (user_id, username, folder_id, datetime.now()))
         conn.commit()
         conn.close()
         logger.info(f"[{user_id}] Добавлен конкурент @{username}")
+
+    def move_competitor_to_folder(self, user_id: str, username: str, folder_id: int = None):
+        """Переместить конкурента в другую папку"""
+        conn = sqlite3.connect(self.db_path)
+        cursor = conn.cursor()
+        cursor.execute(
+            "UPDATE competitors SET folder_id = ? WHERE user_id = ? AND username = ?",
+            (folder_id, user_id, username)
+        )
+        conn.commit()
+        conn.close()
 
     def remove_competitor(self, user_id: str, username: str):
         """Удалить конкурента и все связанные данные"""
@@ -661,6 +803,7 @@ class MonitorAPI:
         cursor.execute("""
             SELECT 
                 c.username,
+                c.folder_id,
                 c.avg_views_per_hour,
                 COUNT(DISTINCT ps.post_id) as total_posts,
                 COALESCE(AVG(ps.likes), 0) as avg_likes,
@@ -685,10 +828,11 @@ class MonitorAPI:
         for row in cursor.fetchall():
             competitors.append({
                 "username": row[0],
-                "avgViews": round(row[1]) if row[1] else 0,
-                "avgLikes": round(row[3]) if row[3] else 0,
-                "totalPosts": row[2],
-                "lastChecked": row[4] if row[4] else datetime.now().isoformat(),
+                "folderId": row[1],
+                "avgViews": round(row[2]) if row[2] else 0,
+                "avgLikes": round(row[4]) if row[4] else 0,
+                "totalPosts": row[3],
+                "lastChecked": row[5] if row[5] else datetime.now().isoformat(),
             })
         conn.close()
         return competitors
