@@ -470,7 +470,8 @@
         }
 
         function showConfirm(message, callback) {
-            if (isTelegramMiniApp) {
+            // if (isTelegramMiniApp) {
+            if (false) {
                 tg.showConfirm(message, callback);
             } else {
                 showBrowserModal('Подтвердите действие', message, [
@@ -488,10 +489,17 @@
             document.getElementById('modalMessage').textContent = message;
             
             const buttonsContainer = document.getElementById('modalButtons');
-            buttonsContainer.innerHTML = buttons.map(btn => 
-                `<button class="modal-btn ${btn.primary ? 'modal-btn-primary' : 'modal-btn-secondary'}" 
-                         onclick="event.stopPropagation(); (${btn.callback.toString()})()">${btn.text}</button>`
-            ).join('');
+
+            buttonsContainer.innerHTML = '';
+            
+            buttons.forEach(btn => {
+                const button = document.createElement('button')
+                button.onclick = (event) => {event.stopPropagation(); btn.callback()};
+                button.textContent = btn.text;
+                button.className = `modal-btn ${btn.primary ? 'modal-btn-primary' : 'modal-btn-secondary'}`;
+                buttonsContainer.appendChild(button);
+            }
+            );
             
             document.getElementById('modalOverlay').classList.add('active');
         }
