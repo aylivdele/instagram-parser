@@ -245,72 +245,6 @@
             font-size: 12px;
             color: var(--tg-theme-hint-color, #999);
         }
-
-        /* ═══════════════════════════════════════════════════════
-           Модальные окна для обычного браузера
-           ═══════════════════════════════════════════════════════ */
-        .modal-overlay {
-            display: none;
-            position: fixed;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            background: rgba(0, 0, 0, 0.5);
-            z-index: 1000;
-            align-items: center;
-            justify-content: center;
-        }
-
-        .modal-overlay.active {
-            display: flex;
-        }
-
-        .modal {
-            background: white;
-            border-radius: 12px;
-            padding: 20px;
-            max-width: 90%;
-            width: 400px;
-            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.3);
-        }
-
-        .modal-title {
-            font-size: 18px;
-            font-weight: 600;
-            margin-bottom: 12px;
-        }
-
-        .modal-message {
-            font-size: 15px;
-            color: #666;
-            margin-bottom: 20px;
-        }
-
-        .modal-buttons {
-            display: flex;
-            gap: 8px;
-            justify-content: flex-end;
-        }
-
-        .modal-btn {
-            padding: 10px 20px;
-            border: none;
-            border-radius: 8px;
-            font-size: 14px;
-            font-weight: 500;
-            cursor: pointer;
-        }
-
-        .modal-btn-primary {
-            background: #0088cc;
-            color: white;
-        }
-
-        .modal-btn-secondary {
-            background: #f0f0f0;
-            color: #333;
-        }
     </style>
 </head>
 <body>
@@ -322,7 +256,7 @@
     <div class="add-section">
         <div class="input-group">
             <label>Username or Link Instagram</label>
-            <input type="text" id="usernameInput" placeholder="например: natgeo или https://www.instagram.com/natgeo" onkeypress="handleEnter(event)">
+            <input type="text" id="usernameInput" placeholder="например: natgeo или https://www.instagram.com/natgeo">
         </div>
         <button class="btn btn-primary" onclick="addCompetitor()">
             ➕ Добавить конкурента
@@ -347,104 +281,19 @@
         <div class="last-check" id="lastCheck">Проверка: только что</div>
     </div>
 
-    <!-- Модальное окно для обычного браузера -->
-    <div class="modal-overlay" id="modalOverlay" onclick="closeModal(event)">
-        <div class="modal" onclick="event.stopPropagation()">
-            <div class="modal-title" id="modalTitle"></div>
-            <div class="modal-message" id="modalMessage"></div>
-            <div class="modal-buttons" id="modalButtons"></div>
-        </div>
-    </div>
-
     <script>
-        // ═══════════════════════════════════════════════════════════════
-        // Определение окружения: Telegram Mini App или обычный браузер
-        // ═══════════════════════════════════════════════════════════════
-        const isTelegramMiniApp = window.Telegram && window.Telegram.WebApp && window.Telegram.WebApp.initData;
-        
-        let tg;
-        if (isTelegramMiniApp) {
-            tg = window.Telegram.WebApp;
-            tg.ready();
-            tg.expand();
-        }
+        // Инициализация Telegram WebApp
+        let tg = window.Telegram.WebApp;
+        tg.ready();
+        tg.expand();
 
-        // ═══════════════════════════════════════════════════════════════
-        // Универсальные обёртки для уведомлений
-        // ═══════════════════════════════════════════════════════════════
-        function showAlert(message) {
-            if (isTelegramMiniApp) {
-                tg.showAlert(message);
-            } else {
-                showBrowserModal('Внимание', message, [
-                    { text: 'OK', primary: true, callback: closeModal }
-                ]);
-            }
-        }
+        // URL вашего API сервера
+        const API_URL = '/api';  // ЗАМЕНИТЕ НА ВАШ URL
 
-        function showPopup(title, message) {
-            if (isTelegramMiniApp) {
-                tg.showPopup({ title, message });
-            } else {
-                showBrowserModal(title, message, [
-                    { text: 'OK', primary: true, callback: closeModal }
-                ]);
-            }
-        }
-
-        function showConfirm(message, callback) {
-            if (isTelegramMiniApp) {
-                tg.showConfirm(message, callback);
-            } else {
-                showBrowserModal('Подтвердите действие', message, [
-                    { text: 'Отмена', primary: false, callback: () => { closeModal(); callback(false); } },
-                    { text: 'Удалить', primary: true, callback: () => { closeModal(); callback(true); } }
-                ]);
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // Модальное окно для обычного браузера
-        // ═══════════════════════════════════════════════════════════════
-        function showBrowserModal(title, message, buttons) {
-            document.getElementById('modalTitle').textContent = title;
-            document.getElementById('modalMessage').textContent = message;
-            
-            const buttonsContainer = document.getElementById('modalButtons');
-            buttonsContainer.innerHTML = buttons.map(btn => 
-                `<button class="modal-btn ${btn.primary ? 'modal-btn-primary' : 'modal-btn-secondary'}" 
-                         onclick="event.stopPropagation(); (${btn.callback.toString()})()">${btn.text}</button>`
-            ).join('');
-            
-            document.getElementById('modalOverlay').classList.add('active');
-        }
-
-        function closeModal(event) {
-            if (!event || event.target.id === 'modalOverlay') {
-                document.getElementById('modalOverlay').classList.remove('active');
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // Конфигурация API
-        // ═══════════════════════════════════════════════════════════════
-        // Автоопределение API URL:
-        // - В браузере: используем относительный путь (тот же домен)
-        // - В Telegram Mini App: можно задать явно в строке ниже
-        const API_URL = '/api';
-        
-        // Если нужен другой URL для Mini App, раскомментируйте:
-        // const API_URL = isTelegramMiniApp ? 'https://your-domain.com/api' : '/api';
-
-        // ═══════════════════════════════════════════════════════════════
         // Данные
-        // ═══════════════════════════════════════════════════════════════
         let competitors = [];
         let alerts = [];
 
-        // ═══════════════════════════════════════════════════════════════
-        // API запросы
-        // ═══════════════════════════════════════════════════════════════
         async function fetchCompetitors() {
             try {
                 const response = await fetch(`${API_URL}/competitors`);
@@ -456,7 +305,7 @@
                 }
             } catch (error) {
                 console.error('Ошибка загрузки конкурентов:', error);
-                showAlert('Ошибка подключения к серверу');
+                tg.showAlert('Ошибка подключения к серверу');
             }
         }
 
@@ -478,7 +327,7 @@
             let username = document.getElementById('usernameInput').value.trim();
             
             if (!username) {
-                showAlert('Введите username');
+                tg.showAlert('Введите username');
                 return;
             }
 
@@ -512,18 +361,22 @@
                 if (data.success) {
                     document.getElementById('usernameInput').value = '';
                     await fetchCompetitors();
-                    showPopup('✅ Успешно', `Аккаунт @${username} добавлен в мониторинг`);
+                    
+                    tg.showPopup({
+                        title: '✅ Успешно',
+                        message: `Аккаунт @${username} добавлен в мониторинг`
+                    });
                 } else {
-                    showAlert(data.error || 'Ошибка добавления');
+                    tg.showAlert(data.error || 'Ошибка добавления');
                 }
             } catch (error) {
                 console.error('Ошибка:', error);
-                showAlert('Ошибка подключения к серверу');
+                tg.showAlert('Ошибка подключения к серверу');
             }
         }
 
         async function removeCompetitor(username) {
-            showConfirm(`Удалить @${username} из мониторинга?`, async (confirmed) => {
+            tg.showConfirm(`Удалить @${username} из мониторинга?`, async (confirmed) => {
                 if (confirmed) {
                     try {
                         const response = await fetch(`${API_URL}/competitors/${username}`, {
@@ -534,20 +387,15 @@
                         
                         if (data.success) {
                             await fetchCompetitors();
-                        } else {
-                            showAlert(data.error || 'Ошибка удаления');
                         }
                     } catch (error) {
                         console.error('Ошибка удаления:', error);
-                        showAlert('Ошибка подключения');
+                        tg.showAlert('Ошибка подключения');
                     }
                 }
             });
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // Рендеринг UI
-        // ═══════════════════════════════════════════════════════════════
         function renderCompetitors() {
             const list = document.getElementById('competitorsList');
             
@@ -614,9 +462,6 @@
             `).join('');
         }
 
-        // ═══════════════════════════════════════════════════════════════
-        // Утилиты
-        // ═══════════════════════════════════════════════════════════════
         function formatNumber(num) {
             if (num >= 1000000) return (num / 1000000).toFixed(1) + 'M';
             if (num >= 1000) return (num / 1000).toFixed(1) + 'K';
@@ -637,24 +482,14 @@
                 `Проверка: ${now.toLocaleTimeString('ru-RU', { hour: '2-digit', minute: '2-digit' })}`;
         }
 
-        function handleEnter(event) {
-            if (event.key === 'Enter') {
-                addCompetitor();
-            }
-        }
-
-        // ═══════════════════════════════════════════════════════════════
-        // Периодическое обновление
-        // ═══════════════════════════════════════════════════════════════
+        // Периодическое обновление данных
         setInterval(() => {
             fetchAlerts();
             fetchCompetitors();
             updateLastCheck();
         }, 60000);  // Каждую минуту
 
-        // ═══════════════════════════════════════════════════════════════
-        // Инициализация
-        // ═══════════════════════════════════════════════════════════════
+        // Первичная загрузка данных
         async function init() {
             await fetchCompetitors();
             await fetchAlerts();
@@ -663,14 +498,10 @@
         
         init();
 
-        // Telegram Mini App: обработка кнопки "Назад"
-        if (isTelegramMiniApp) {
-            tg.BackButton.onClick(() => {
-                tg.close();
-            });
-        }
-
-        console.log('Instagram Monitor загружен в режиме:', isTelegramMiniApp ? 'Telegram Mini App' : 'Обычный браузер');
+        // Обработка нажатия кнопки "Назад" в Telegram
+        tg.BackButton.onClick(() => {
+            tg.close();
+        });
     </script>
 </body>
 </html>
