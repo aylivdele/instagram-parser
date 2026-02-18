@@ -314,14 +314,18 @@ class InstagramMonitor:
         logger.info(f"Конкурент @{username} добавлен")
 
     def remove_competitor(self, username: str):
+        """Удалить конкурента и все связанные данные"""
         conn = sqlite3.connect(self.db_path)
         cursor = conn.cursor()
-        cursor.execute("""
-            DELETE FROM competitors WHERE username = ?
-        """, (username,))
+        
+        # Удаляем из всех таблиц
+        cursor.execute("DELETE FROM competitors WHERE username = ?", (username,))
+        cursor.execute("DELETE FROM post_snapshots WHERE username = ?", (username,))
+        cursor.execute("DELETE FROM alerts WHERE username = ?", (username,))
+        
         conn.commit()
         conn.close()
-        logger.info(f"Конкурент @{username} удален")
+        logger.info(f"Конкурент @{username} удалён вместе со всеми данными")
 
     def get_competitors(self) -> List[str]:
         conn = sqlite3.connect(self.db_path)
@@ -389,12 +393,45 @@ class InstagramMonitor:
         else:
             views_per_hour = post.views / current_hours if current_hours > 0 else 0
 
+        # Вычисляем среднюю скорость роста на основе дельт между проверками
+        # Это даёт более точную картину, чем просто views/hours_since_posted
         cursor.execute("""
-            SELECT AVG(views / hours_since_posted) as avg_vph
-            FROM post_snapshots
-            WHERE username = ? AND hours_since_posted > 0 AND hours_since_posted < 24
+            WITH ranked_snapshots AS (
+                SELECT 
+                    post_id,
+                    views,
+                    checked_at,
+                    LAG(views) OVER (PARTITION BY post_id ORDER BY checked_at) as prev_views,
+                    LAG(checked_at) OVER (PARTITION BY post_id ORDER BY checked_at) as prev_checked
+                FROM post_snapshots
+                WHERE username = ?
+                  AND hours_since_posted < 48
+            ),
+            deltas AS (
+                SELECT 
+                    (views - prev_views) as views_delta,
+                    (julianday(checked_at) - julianday(prev_checked)) * 24 as hours_delta
+                FROM ranked_snapshots
+                WHERE prev_views IS NOT NULL
+            )
+            SELECT AVG(views_delta / hours_delta) as avg_vph
+            FROM deltas
+            WHERE hours_delta > 0 AND views_delta >= 0
         """, (post.username,))
+        
         result = cursor.fetchone()
+        
+        # Если нет дельт (первая проверка), fallback на простую формулу
+        if not result[0]:
+            cursor.execute("""
+                SELECT AVG(views / hours_since_posted) as avg_vph
+                FROM post_snapshots
+                WHERE username = ? 
+                  AND hours_since_posted > 0 
+                  AND hours_since_posted < 24
+            """, (post.username,))
+            result = cursor.fetchone()
+        
         avg_views_per_hour = result[0] if result[0] else 1000
 
         cursor.execute("""
@@ -408,11 +445,14 @@ class InstagramMonitor:
             if avg_views_per_hour > 0 else 0
         )
 
+        # Критерии тренда:
+        # 1. Рост > 150% от среднего (т.е. скорость в 2.5 раза выше нормы)
+        # 2. Пост свежий (младше 48 часов, чтобы не пропустить вирусный контент)
+        # 3. Минимум 2 проверки (для подтверждения стабильного роста)
         is_trending = (
             growth_rate > 150
-            and current_hours < 24
+            and current_hours < 48
             and len(snapshots) >= 2
-            and views_per_hour > avg_views_per_hour * 2
         )
 
         logger.info(
@@ -612,22 +652,44 @@ class MonitorAPI:
         return alerts
 
     def get_competitors_stats(self) -> List[Dict]:
+        """Получить статистику по конкурентам с реальными средними метриками"""
         conn = sqlite3.connect(self.monitor.db_path)
         cursor = conn.cursor()
+        
         cursor.execute("""
-            SELECT c.username, c.avg_views_per_hour,
-                   COUNT(DISTINCT ps.post_id) as total_posts
+            SELECT 
+                c.username,
+                c.avg_views_per_hour,
+                COUNT(DISTINCT ps.post_id) as total_posts,
+                COALESCE(AVG(ps.likes), 0) as avg_likes,
+                MAX(ps.checked_at) as last_checked
             FROM competitors c
-            LEFT JOIN post_snapshots ps ON c.username = ps.username
+            LEFT JOIN (
+                -- Берём только последний snapshot каждого поста (избегаем дубликатов)
+                SELECT post_id, username, likes, checked_at
+                FROM (
+                    SELECT 
+                        post_id, 
+                        username, 
+                        likes, 
+                        checked_at,
+                        ROW_NUMBER() OVER (PARTITION BY post_id ORDER BY checked_at DESC) as rn
+                    FROM post_snapshots
+                    WHERE hours_since_posted < 48
+                )
+                WHERE rn = 1
+            ) ps ON c.username = ps.username
             GROUP BY c.username
         """)
+        
         competitors = []
         for row in cursor.fetchall():
             competitors.append({
                 "username": row[0],
                 "avgViews": round(row[1]) if row[1] else 0,
-                "avgLikes": round(row[1] * 0.08) if row[1] else 0,
-                "lastChecked": datetime.now().isoformat(),
+                "avgLikes": round(row[3]) if row[3] else 0,
+                "totalPosts": row[2],
+                "lastChecked": row[4] if row[4] else datetime.now().isoformat(),
             })
         conn.close()
         return competitors
