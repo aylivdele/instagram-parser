@@ -388,8 +388,8 @@
 
     <div class="add-section">
         <div class="input-group">
-            <label>Username Instagram</label>
-            <input type="text" id="usernameInput" placeholder="например: natgeo" onkeypress="handleEnter(event)">
+            <label>Username or Link Instagram</label>
+            <input type="text" id="usernameInput" placeholder="например: natgeo или https://www.instagram.com/natgeo" onkeypress="handleEnter(event)">
         </div>
         <button class="btn btn-primary" onclick="addCompetitor()">
             ➕ Добавить конкурента
@@ -400,7 +400,6 @@
         <h2 class="section-title">🔥 Вирусный контент</h2>
         <div id="alertsList"></div>
     </div>
-    
     <div class="folders-section">
         <h2 class="section-title">📁 Папки</h2>
         <div id="foldersList"></div>
@@ -569,11 +568,27 @@
         }
 
         async function addCompetitor() {
-            const username = document.getElementById('usernameInput').value.trim();
+            let username = document.getElementById('usernameInput').value.trim();
             
             if (!username) {
                 showAlert('Введите username');
                 return;
+            }
+
+            const linkPrefix = 'https://www.instagram.com/';
+
+            if (username.startsWith(linkPrefix)) {
+                let paramIndex = username.indexOf('?', linkPrefix.length)
+                let slashIndex = username.indexOf('/', linkPrefix.length)
+                let endIndex = username.length
+                if (paramIndex !== -1) {
+                    endIndex = paramIndex
+                }
+                if (slashIndex !== -1) {
+                    endIndex = Math.min(endIndex, slashIndex)
+                }
+
+                username = username.substring(linkPrefix.length, endIndex)
             }
 
             try {
