@@ -318,7 +318,7 @@ class InstagramMonitor:
         cursor = conn.cursor()
         cursor.execute("""
             DELETE FROM competitors WHERE username = ?
-        """, (username))
+        """, (username,))
         conn.commit()
         conn.close()
         logger.info(f"Конкурент @{username} удален")
