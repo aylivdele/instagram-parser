@@ -509,8 +509,7 @@
                 button.textContent = btn.text;
                 button.className = `modal-btn ${btn.primary ? 'modal-btn-primary' : 'modal-btn-secondary'}`;
                 buttonsContainer.appendChild(button);
-            }
-            );
+            });
             
             document.getElementById('modalOverlay').classList.add('active');
         }
@@ -820,7 +819,7 @@
 
             list.innerHTML = alerts.map(alert => {
                 
-                const competitor = competitors.find(c => c.username === a.username)
+                const competitor = competitors.find(c => c.username === alert.username)
                 if (selectedFolderId && competitor && competitor.folderId !== selectedFolderId) {
                     return ''
                 }
@@ -846,10 +845,7 @@
                         Открыть пост →
                     </a>
                 </div>
-            `)}).join('');
-            if (list.innerHTML.trim().length === 0) {
-                list.innerHTML = emptyContent;
-            }
+            `)}).join('') || emptyContent;
         }
 
         // ═══════════════════════════════════════════════════════════════
