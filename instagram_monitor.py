@@ -202,7 +202,7 @@ async def fetch_instagram_posts_apify(
             json=run_input,
             headers={"Content-Type": "application/json"},
         ) as resp:
-            if resp.status != 200:
+            if resp.status > 299:
                 body = await resp.text()
                 raise RuntimeError(f"[Apify] Ошибка {resp.status}: {body}")
 
