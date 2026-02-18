@@ -606,7 +606,7 @@ class InstagramMonitor:
             """, (user_id, post.username, Config.TREND_MAX_POST_AGE_HOURS))
             result = cursor.fetchone()
         
-        avg_views_per_hour = result[0] if result[0] else 1000
+        avg_views_per_hour = result[0] if result[0] else 0
 
         cursor.execute("""
             UPDATE competitors 
@@ -626,6 +626,11 @@ class InstagramMonitor:
             and current_hours < Config.TREND_MAX_POST_AGE_HOURS
             and len(snapshots) >= Config.TREND_MIN_SNAPSHOTS
             and views_per_hour > avg_views_per_hour * Config.TREND_SPEED_MULTIPLIER
+        )
+
+        logger.info(
+            f"Пост {post.post_id}: {views_per_hour:.0f} просм/ч "
+            f"(среднее: {avg_views_per_hour:.0f}, рост: {growth_rate:.0f}%)"
         )
 
         return PostMetrics(
@@ -720,6 +725,8 @@ class InstagramMonitor:
                     p for p in posts
                     if (datetime.now() - p.timestamp).total_seconds() / 3600 < Config.POSTS_MAX_AGE_HOURS
                 ]
+
+                logger.info(f"Постов после фильтрации по дате: {len(recent_posts)}")
 
                 for post in recent_posts:
                     self.save_post_snapshot(user_id, post)
