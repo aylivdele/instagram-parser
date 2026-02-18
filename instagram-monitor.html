@@ -324,11 +324,27 @@
         }
 
         async function addCompetitor() {
-            const username = document.getElementById('usernameInput').value.trim();
+            let username = document.getElementById('usernameInput').value.trim();
             
             if (!username) {
                 tg.showAlert('Введите username');
                 return;
+            }
+
+            const linkPrefix = 'https://www.instagram.com/';
+
+            if (username.startsWith(linkPrefix)) {
+                let paramIndex = username.indexOf('?', linkPrefix.length)
+                let slashIndex = username.indexOf('/', linkPrefix.length)
+                let endIndex = username.length
+                if (paramIndex !== -1) {
+                    endIndex = paramIndex
+                }
+                if (slashIndex !== -1) {
+                    endIndex = Math.min(endIndex, slashIndex)
+                }
+
+                username = username.substring(linkPrefix.length, endIndex)
             }
 
             try {
