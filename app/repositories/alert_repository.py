@@ -1,5 +1,6 @@
-from sqlalchemy import select
-from app.db.models import Alert, InstagramAccount, InstagramPost
+from typing import Optional
+from sqlalchemy import func, select
+from app.db.models import Alert, Folder, InstagramAccount, InstagramPost, UserCompetitor
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -35,13 +36,32 @@ class AlertRepository:
         self.session.add(alert)
         await self.session.commit()
         return alert
+    async def get_count_alerts_by_user_id(self, user_id: str, folder_id: Optional[int]):
+        count_query = (
+            select(func.count())
+            .select_from(Alert)
+            .join(InstagramPost, Alert.post_id == InstagramPost.id)
+            .join(InstagramAccount, InstagramPost.account_id == InstagramAccount.id)
+            .join(
+                UserCompetitor,
+                (UserCompetitor.account_id == InstagramAccount.id)
+                & (UserCompetitor.user_id == user_id)
+            )
+            .where(Alert.user_id == user_id)
+        )
+
+        if folder_id is not None:
+            count_query = count_query.where(UserCompetitor.folder_id == folder_id)
+
+        total_result = await self.session.execute(count_query)
+        return total_result.scalar_one()
     
-    async def get_alerts_dto(self, user_id: str):
-        result = await self.session.execute(
-            select(
+    async def get_alerts_dto(self, user_id: str, offset: int, limit: int, folder_id: Optional[int]):
+        data_query = (select(
                 Alert,
                 InstagramPost.url,
-                InstagramAccount.username
+                InstagramAccount.username,
+                UserCompetitor.folder_id.label("folder_id")
             )
             .join(
                 InstagramPost,
@@ -51,15 +71,28 @@ class AlertRepository:
                 InstagramAccount,
                 InstagramPost.account_id == InstagramAccount.id
             )
-            .where(Alert.user_id == user_id)
-            .order_by(Alert.detected_at.desc())
+            .join(
+                UserCompetitor,
+                (UserCompetitor.account_id == InstagramAccount.id)
+                & (UserCompetitor.user_id == user_id)
+            )
+            .where(Alert.user_id == user_id))
+        if folder_id is not None:
+            data_query = data_query.where(UserCompetitor.folder_id == folder_id)
+
+        result = await self.session.execute(
+            data_query
+            .order_by(Alert.detected_at.desc())    
+            .offset(offset)
+            .limit(limit)
         )
 
         alerts = []
 
-        for alert, post_url, username in result.all():
+        for alert, post_url, username, folder_id in result.all():
             alerts.append({
                 "username": username,
+                "folderId": folder_id,
                 "growth": alert.growth_rate,
                 "currentViews": alert.views,
                 "timestamp": alert.detected_at,

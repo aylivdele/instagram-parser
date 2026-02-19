@@ -2,7 +2,7 @@ import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
 
-from app.db.models import Alert, User, InstagramPost, InstagramAccount
+from app.db.models import Alert, Folder, User, InstagramPost, InstagramAccount, UserCompetitor
 
 
 class TelegramNotificationService:
@@ -20,13 +20,13 @@ class TelegramNotificationService:
 
         alerts = await self._get_unsent_alerts()
 
-        for alert in alerts:
+        for alert, post_url, username, folder_name in alerts:
             chat_id = await self._get_user_chat_id(alert.user_id)
 
             if not chat_id:
                 continue
 
-            message = await self._build_message(alert)
+            message = await self._build_message(alert, post_url, username, folder_name)
 
             success = await self._send_message(chat_id, message)
 
@@ -40,12 +40,24 @@ class TelegramNotificationService:
     async def _get_unsent_alerts(self):
 
         result = await self.session.execute(
-            select(Alert)
-            .where(Alert.sent_to_telegram == False)
-            .order_by(Alert.detected_at)
+            select(
+                Alert,
+                InstagramPost.url,
+                InstagramAccount.username,
+                Folder.name
+            )
+            .join(InstagramPost, Alert.post_id == InstagramPost.id)
+            .join(InstagramAccount, InstagramPost.account_id == InstagramAccount.id)
+            .join(
+                UserCompetitor,
+                (UserCompetitor.account_id == InstagramAccount.id)
+                & (UserCompetitor.user_id == Alert.user_id)
+            )
+            .join(Folder, Folder.id == UserCompetitor.folder_id)
+            .where(Alert.sent == False)
         )
 
-        return result.scalars().all()
+        return result.all()
 
     # ────────────────────────────────
 
@@ -60,29 +72,16 @@ class TelegramNotificationService:
 
     # ────────────────────────────────
 
-    async def _build_message(self, alert: Alert):
-
-        result = await self.session.execute(
-            select(InstagramPost.url, InstagramAccount.username)
-            .join(InstagramAccount,
-                  InstagramPost.account_id == InstagramAccount.id)
-            .where(InstagramPost.id == alert.post_id)
-        )
-
-        row = result.first()
-
-        if not row:
-            return None
-
-        url, username = row
+    async def _build_message(self, alert: Alert, post_url: str, username: str, folder_name: str | None = None):
 
         return (
             f"🚀 <b>Обнаружен вирусный пост!</b>\n\n"
             f"👤 Аккаунт: @{username}\n"
+            f"📁 Папка: {folder_name if folder_name else 'Без папки'}"
             f"📊 Просмотры: {alert.views:,}\n"
             f"⚡ Скорость: {alert.views_per_hour:.0f} в час\n"
             f"📈 Рост: +{alert.growth_rate:.0f}%\n\n"
-            f"<a href=\"{url}\">Открыть пост</a>"
+            f"<a href=\"{post_url}\">Открыть пост</a>"
         )
 
     # ────────────────────────────────

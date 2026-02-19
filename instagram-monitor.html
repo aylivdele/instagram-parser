@@ -388,6 +388,32 @@
     background-color: rgba(255, 127, 80, 0.348);
     color: #f0f0f0;
 }
+.pagination {
+    margin-top: 20px;
+    display: flex;
+    gap: 10px;
+    align-items: center;
+}
+
+.pagination button {
+    padding: 6px 12px;
+    cursor: pointer;
+}
+
+.pagination button:disabled {
+    opacity: 0.5;
+    cursor: not-allowed;
+}
+
+.page-number {
+    padding: 6px 10px;
+    cursor: pointer;
+}
+
+.page-number.active {
+    font-weight: bold;
+    text-decoration: underline;
+}
     </style>
 </head>
 <body>
@@ -408,6 +434,13 @@
 
     <div class="alerts-section" id="alertsSection">
         <h2 class="section-title">🔥 Вирусный контент</h2>
+        <div class="pagination" id="pagination">
+            <button id="prevPageBtn">←</button>
+
+            <div id="pageNumbers"></div>
+
+            <button id="nextPageBtn">→</button>
+        </div>
         <div id="alertsList"></div>
     </div>
     <div class="folders-section">
@@ -558,6 +591,9 @@
         // ═══════════════════════════════════════════════════════════════
         let competitors = [];
         let alerts = [];
+        let currentPage = 1;
+        const pageSize = 10;
+        let totalPages = 1;
 
         // ═══════════════════════════════════════════════════════════════
         // API запросы
@@ -579,15 +615,17 @@
             }
         }
 
-        async function fetchAlerts() {
+        async function fetchAlerts(page) {
             try {
-                const response = await fetch(`${API_URL}/alerts`, {
+                const response = await fetch(`${API_URL}/alerts?page=${page}&page_size=${pageSize}&folder_id=${selectedFolderId ?? ''}`, {
                     headers: { 'X-User-Id': USER_ID }
                 });
                 const data = await response.json();
                 
                 if (data.success) {
                     alerts = data.data;
+                    currentPage = data.pagination.page;
+                    totalPages = data.pagination.pages;
                     renderAlerts();
                 }
             } catch (error) {
@@ -720,9 +758,11 @@
                         if (response.ok) {
                             if (selectedFolderId === folderId) {
                                 selectedFolderId = null;
+                                currentPage = 1;
                             }
                             await fetchFolders();
                             await fetchCompetitors();
+                            await fetchAlerts();
                         }
                     } catch (error) {
                         console.error('Ошибка удаления папки:', error);
@@ -756,10 +796,11 @@
             `).join('');
         }
 
-        function selectFolder(folderId) {
+        async function selectFolder(folderId) {
             selectedFolderId = selectedFolderId === folderId ? null : folderId;
             renderFolders();
             renderCompetitors();
+            await fetchAlerts(1);
             renderAlerts();
         }
         
@@ -813,6 +854,51 @@
             }).join('');
         }
 
+        function renderPagination() {
+            const pageNumbers = document.getElementById("pageNumbers");
+            pageNumbers.innerHTML = "";
+
+            // Previous button
+            document.getElementById("prevPageBtn").disabled = currentPage === 1;
+            document.getElementById("nextPageBtn").disabled = currentPage === totalPages;
+
+            // Показываем максимум 5 страниц вокруг текущей
+            const maxVisible = 5;
+            let start = Math.max(1, currentPage - 2);
+            let end = Math.min(totalPages, start + maxVisible - 1);
+
+            if (end - start < maxVisible - 1) {
+                start = Math.max(1, end - maxVisible + 1);
+            }
+
+            for (let i = start; i <= end; i++) {
+                const span = document.createElement("span");
+                span.className = "page-number";
+                span.textContent = i;
+
+                if (i === currentPage) {
+                    span.classList.add("active");
+                } else {
+                    span.addEventListener("click", () => fetchAlerts(i));
+                }
+
+                pageNumbers.appendChild(span);
+            }
+        }
+
+        // Кнопки
+        document.getElementById("prevPageBtn").addEventListener("click", () => {
+            if (currentPage > 1) {
+                fetchAlerts(currentPage - 1);
+            }
+        });
+
+        document.getElementById("nextPageBtn").addEventListener("click", () => {
+            if (currentPage < totalPages) {
+                fetchAlerts(currentPage + 1);
+            }
+        });
+
         function renderAlerts() {
             const list = document.getElementById('alertsList');
             
@@ -829,12 +915,11 @@
 
             list.innerHTML = alerts.map(alert => {
                 
-                const competitor = competitors.find(c => c.username === alert.username)
-                if (selectedFolderId && competitor && competitor.folderId !== selectedFolderId) {
+                if (selectedFolderId && alert.folderId === selectedFolderId) {
                     return ''
                 }
                 // Показываем badge папки только когда отображаем всех
-                const folder = folders.find(f => f.id === competitor.folderId);
+                const folder = folders.find(f => f.id === alert.folderId);
                 const folderBadge = folder && selectedFolderId === null
                     ? `<span class="alert-badge">${folder.name}</span>`
                     : '';
@@ -856,6 +941,7 @@
                     </a>
                 </div>
             `)}).join('') || emptyContent;
+            renderPagination();
         }
 
         // ═══════════════════════════════════════════════════════════════
@@ -892,7 +978,7 @@
         // ═══════════════════════════════════════════════════════════════
         setInterval(() => {
             fetchCompetitors();
-            fetchAlerts();
+            fetchAlerts(currentPage);
             updateLastCheck();
         }, 60000);  // Каждую минуту
 
@@ -926,7 +1012,7 @@
             await registerUser();
             await fetchFolders();
             await fetchCompetitors();
-            await fetchAlerts();
+            await fetchAlerts(currentPage);
             updateLastCheck();
         }
         
