@@ -98,7 +98,7 @@ class InstagramPost(Base):
     published_at = Column(DateTime, index=True)
 
     account = relationship("InstagramAccount", back_populates="posts")
-    snapshots = relationship("PostSnapshot", back_populates="post")
+    snapshots = relationship("PostSnapshot", back_populates="post", cascade="all, delete")
 
 
 
@@ -112,6 +112,8 @@ class PostSnapshot(Base):
     views: Mapped[int] = mapped_column(Integer)
     likes: Mapped[int] = mapped_column(Integer)
     checked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+
+    post = relationship("InstagramPost", back_populates="snapshots")
 
 
 # ───────────────── ALERTS ─────────────────
