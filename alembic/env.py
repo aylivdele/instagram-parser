@@ -8,12 +8,16 @@ import asyncio
 
 from app.db.base import Base
 from app.db.models import *
+import os
 
 config = context.config
 fileConfig(config.config_file_name)
 
 target_metadata = Base.metadata
-
+DATABASE_URL = os.environ.get("DATABASE_URL")
+if DATABASE_URL is None:
+    raise ValueError("DATABASE_URL environment variable is not set")
+config.set_main_option("sqlalchemy.url", DATABASE_URL)
 
 def run_migrations_offline():
     url = config.get_main_option("sqlalchemy.url")
