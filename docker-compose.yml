@@ -19,6 +19,8 @@ services:
     restart: always
     depends_on:
       - db
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
     env_file:
       - .env
     ports:
