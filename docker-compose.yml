@@ -52,7 +52,7 @@ services:
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - ./instagram-monitor.html:/srv/instagram-monitor.html:ro
-      - caddy_data:/data
+      - /usr/local/share/caddy:/data
       - caddy_config:/config
     depends_on:
       - api
