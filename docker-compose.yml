@@ -1,47 +1,44 @@
+version: "3.9"
+
 services:
 
-  # ─────────────────────────────────────────────
-  # Flask API + фоновый мониторинг Instagram
-  # ─────────────────────────────────────────────
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    container_name: instagram_monitor_api
-    restart: unless-stopped
+  db:
+    image: postgres:16
+    restart: always
     environment:
-      # Telegram
-      - TELEGRAM_BOT_TOKEN=${TELEGRAM_BOT_TOKEN}
-      
-      # Apify
-      - APIFY_TOKEN=${APIFY_TOKEN}
-      
-      # Параметры мониторинга
-      - POSTS_LIMIT=${POSTS_LIMIT:-10}
-      - POSTS_MAX_AGE_HOURS=${POSTS_MAX_AGE_HOURS:-48}
-      - MONITORING_INTERVAL_MINUTES=${MONITORING_INTERVAL_MINUTES:-60}
-      
-      # Критерии детекции трендов
-      - TREND_GROWTH_THRESHOLD=${TREND_GROWTH_THRESHOLD:-150}
-      - TREND_MAX_POST_AGE_HOURS=${TREND_MAX_POST_AGE_HOURS:-24}
-      - TREND_MIN_SNAPSHOTS=${TREND_MIN_SNAPSHOTS:-2}
-      - TREND_SPEED_MULTIPLIER=${TREND_SPEED_MULTIPLIER:-2.0}
-      
-      # База данных
-      - DB_PATH=/data/instagram_monitor.db
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB}
     volumes:
-      - db_data:/data
-    expose:
-      - "5000"
-    healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - scraper-network
 
-  # ─────────────────────────────────────────────
-  # Caddy — раздаёт HTML и проксирует /api/*
-  # ─────────────────────────────────────────────
+  api:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    env_file:
+      - .env
+    ports:
+      - "8000:8000"
+    networks:
+      - scraper-network
+
+  worker:
+    build: .
+    restart: always
+    depends_on:
+      - db
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://${POSTGRES_USER}:${POSTGRES_PASSWORD}@db/${POSTGRES_DB}
+    env_file:
+      - .env
+    command: ["python", "-m", "app.worker"]
+    networks:
+      - scraper-network
+
   caddy:
     image: caddy:2-alpine
     container_name: instagram_monitor_caddy
@@ -57,8 +54,13 @@ services:
       - caddy_config:/config
     depends_on:
       - api
+    networks:
+      - scraper-network
 
+networks:
+  scraper-network:
+    driver: bridge
 volumes:
-  db_data:
+  pgdata:
   caddy_data:
   caddy_config:

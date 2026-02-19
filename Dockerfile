@@ -1,30 +1,14 @@
-FROM python:3.11-slim
-
-# Системные зависимости (curl нужен для healthcheck)
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    curl \
-    && rm -rf /var/lib/apt/lists/*
+FROM python:3.12-slim
 
 WORKDIR /app
 
-# Устанавливаем зависимости отдельным слоем (кэшируется при неизменном requirements.txt)
+ENV PYTHONDONTWRITEBYTECODE=1
+ENV PYTHONUNBUFFERED=1
+
 COPY requirements.txt .
+
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Копируем исходники
-COPY instagram_monitor.py .
-COPY api_server.py .
+COPY . .
 
-# Создаём точку монтирования для базы данных
-RUN mkdir -p /data
-
-# Запускаем Flask через gunicorn (production-ready)
-# --workers 1 — важно! фоновый поток мониторинга не должен дублироваться
-CMD ["gunicorn", \
-     "--bind", "0.0.0.0:5000", \
-     "--workers", "1", \
-     "--threads", "4", \
-     "--timeout", "120", \
-     "--access-logfile", "-", \
-     "--error-logfile", "-", \
-     "api_server:app"]
+CMD ["gunicorn", "-k", "uvicorn.workers.UvicornWorker", "-w", "4", "-b", "0.0.0.0:8000", "app.api.main:create_app()"]

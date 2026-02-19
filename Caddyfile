@@ -14,11 +14,11 @@ trendwatching.meta-box.ru {
 
     # ── Flask API ─────────────────────────────────────────────
     handle /api/* {
-        reverse_proxy api:5000
+        reverse_proxy api:8000
     }
 
     handle /health {
-        reverse_proxy api:5000
+        reverse_proxy api:8000
     }
 
     # ── Заголовки безопасности ────────────────────────────────

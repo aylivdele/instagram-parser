@@ -371,12 +371,22 @@
     font-size: 14px;
 }
 
-.folder-badge {
+.folder-badge{
     display: inline-block;
     padding: 2px 8px;
     border-radius: 12px;
     font-size: 11px;
     margin-left: 8px;
+}
+
+.alert-badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 12px;
+    font-size: 11px;
+    margin-left: 8px;
+    background-color: rgba(255, 127, 80, 0.348);
+    color: #f0f0f0;
 }
     </style>
 </head>
@@ -826,7 +836,7 @@
                 // Показываем badge папки только когда отображаем всех
                 const folder = folders.find(f => f.id === competitor.folderId);
                 const folderBadge = folder && selectedFolderId === null
-                    ? `<span class="folder-badge" style="background: ${folder.color}20; color: ${folder.color}">${folder.name}</span>`
+                    ? `<span class="alert-badge">${folder.name}</span>`
                     : '';
                 return (`
                 <div class="alert-card">
