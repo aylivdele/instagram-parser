@@ -58,7 +58,7 @@ class ApifyFetcher(InstagramFetcherInterface):
             "resultsType": results_type,
             "resultsLimit": self.results_limit,
             "skipPinnedPosts": True,
-            "onlyPostsNewerThan": self.lookback_iso
+            # "onlyPostsNewerThan": self.lookback_iso
         }
 
         async with aiohttp.ClientSession() as session:
