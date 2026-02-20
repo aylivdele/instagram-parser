@@ -18,7 +18,6 @@ class AppFactory:
 
         print("Creating worker with settings:")
         print(f"Apify token: {self.settings.APIFY_TOKEN}")
-        print(f"Apify actor id: {self.settings.APIFY_ACTOR_ID}")
         print(f"Lookback iso: {self.settings.only_posts_newer_than()}")
         print(f"Results limit: {self.settings.APIFY_RESULTS_LIMIT}")
 
