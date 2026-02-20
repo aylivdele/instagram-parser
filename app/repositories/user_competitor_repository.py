@@ -1,5 +1,5 @@
 from sqlalchemy import select
-from app.db.models import UserCompetitor
+from app.db.models import InstagramAccount, UserCompetitor
 from sqlalchemy.ext.asyncio import AsyncSession
 
 
@@ -47,10 +47,11 @@ class UserCompetitorRepository:
 
     async def get_user_accounts(self, user_id: str):
         result = await self.session.execute(
-            select(UserCompetitor)
+            select(InstagramAccount.username, InstagramAccount.avg_posts_views_per_hour, InstagramAccount.avg_reels_views_per_hour, UserCompetitor.folder_id)
+            .join(InstagramAccount, InstagramAccount.id == UserCompetitor.account_id)
             .where(UserCompetitor.user_id == user_id)
         )
-        return result.scalars().all()
+        return result.all()
     
     async def get_users_by_account(self, account_id: int):
 

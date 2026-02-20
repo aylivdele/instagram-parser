@@ -41,11 +41,11 @@ async def list_competitors(
     user_comp_repo = UserCompetitorRepository(session)
     accounts = await user_comp_repo.get_user_accounts(user_id)
     dto_accounts = [({
-                "username": acc.username,
-                "avgViews": acc.avg_reels_views_per_hour,
-                "avgLikes": acc.avg_posts_views_per_hour,
-                "folderId": acc.folder_id
-            }) for acc in accounts]
+                "username": username,
+                "avgViews": avg_reels_views_per_hour,
+                "avgLikes": avg_posts_views_per_hour,
+                "folderId": folder_id
+            }) for username, avg_reels_views_per_hour, avg_posts_views_per_hour, folder_id in accounts]
     return {
         "success": True,
         "data": dto_accounts
