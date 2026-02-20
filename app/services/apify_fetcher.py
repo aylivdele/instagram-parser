@@ -49,7 +49,7 @@ class ApifyFetcher(InstagramFetcherInterface):
 
     async def _start_actor(self, username: str, results_type: str):
 
-        actor_id = 'apify~instagram-post-scraper' if results_type == 'posts' else 'apify~instagram-reels-scraper'
+        actor_id = "apify~instagram-post-scraper" if results_type == "posts" else "apify~instagram-reel-scraper"
 
         url = f"{self.base_url}/acts/{actor_id}/runs?token={self.api_token}"
 
