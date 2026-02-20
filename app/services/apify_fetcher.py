@@ -93,7 +93,7 @@ class ApifyFetcher(InstagramFetcherInterface):
             
     
 
-    def pretty_print_json(data, max_str_len: int = 200):
+    def pretty_print_json(self, data, max_str_len: int = 200):
         def truncate(obj):
             if isinstance(obj, dict):
                 return {k: truncate(v) for k, v in obj.items()}
