@@ -118,8 +118,23 @@ class ApifyFetcher(InstagramFetcherInterface):
             )
         )
 
-    def _map_posts(self, items, results_type):
+    def _filter_apify_errors(self, items: list[dict]) -> list[dict]:
+        clean_items = []
 
+        for item in items:
+            if not isinstance(item, dict):
+                continue
+
+            if "error" in item:
+                print(f"[Apify Fetcher] Skipping error item: {item} - {json.dump(item.get('error'))}")
+                continue
+
+            clean_items.append(item)
+
+        return clean_items
+
+    def _map_posts(self, items, results_type):
+        items = self._filter_apify_errors(items)
         posts = []
         self.pretty_print_json(items, 50)
 
