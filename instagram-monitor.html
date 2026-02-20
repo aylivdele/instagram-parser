@@ -617,7 +617,11 @@
 
         async function fetchAlerts(page) {
             try {
-                const response = await fetch(`${API_URL}/alerts?page=${page}&page_size=${pageSize}&folder_id=${selectedFolderId ?? ''}`, {
+                let folderSuffix = ''
+                if (selectedFolderId !== null && selectedFolderId !== undefined) {
+                    folderSuffix = `&folder_id=${selectedFolderId}`
+                }
+                const response = await fetch(`${API_URL}/alerts?page=${page}&page_size=${pageSize}${folderSuffix}`, {
                     headers: { 'X-User-Id': USER_ID }
                 });
                 const data = await response.json();
