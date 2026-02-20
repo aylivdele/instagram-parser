@@ -1,18 +1,12 @@
-# ─────────────────────────────────────────────────────────────
-# Caddyfile для Instagram Monitor
-# Замените YOUR_DOMAIN.COM на ваш реальный домен
-# ─────────────────────────────────────────────────────────────
 
-trendwatching.meta-box.ru {
+trendwatching.meta-box.ru, mb-trendwatching.molodostclinic.ru {
 
-    # ── Telegram Mini App (статический HTML) ─────────────────
     handle / {
         root * /srv
         try_files /instagram-monitor.html =404
         file_server
     }
 
-    # ── Flask API ─────────────────────────────────────────────
     handle /api/* {
         reverse_proxy api:8000
     }
@@ -21,15 +15,12 @@ trendwatching.meta-box.ru {
         reverse_proxy api:8000
     }
 
-    # ── Заголовки безопасности ────────────────────────────────
     header {
-        # Требуется для Telegram Mini App
         X-Frame-Options "ALLOWALL"
         X-Content-Type-Options "nosniff"
         Referrer-Policy "no-referrer-when-downgrade"
     }
 
-    # ── Логи ──────────────────────────────────────────────────
     log {
         output stdout
         format console
