@@ -126,7 +126,7 @@ class ApifyFetcher(InstagramFetcherInterface):
                 continue
 
             if "error" in item:
-                print(f"[Apify Fetcher] Skipping error item: {item} - {json.dump(item.get('error'))}")
+                print(f"[Apify Fetcher] Skipping error item: {item} - {json.dumps(item.get('error'), indent=2)}")
                 continue
 
             clean_items.append(item)
