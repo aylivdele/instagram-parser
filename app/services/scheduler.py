@@ -1,5 +1,6 @@
 import asyncio
 from datetime import datetime
+import logging
 from sqlalchemy.ext.asyncio import async_sessionmaker
 
 from app.services.monitor_service import MonitorService
@@ -21,6 +22,7 @@ class Scheduler:
         self.interval = monitoring_interval_minutes
 
         self._running = False
+        self.logger = logging.getLogger(__name__)
 
     # ────────────────────────────────
 
@@ -39,7 +41,7 @@ class Scheduler:
                     await monitor_service.monitor_cycle()
                     await telegram_service.send_pending_alerts()
                 except Exception as e:
-                    print(f"[Scheduler] Error: {e}")
+                    self.logger.exception(f"[Scheduler] Error: {e}")
 
             print("[Scheduler] Cycle finished")
             await asyncio.sleep(self.interval * 60)

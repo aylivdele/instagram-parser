@@ -10,7 +10,7 @@ from app.repositories.alert_repository import AlertRepository
 
 from app.services.trend_service import TrendService, SnapshotData
 from app.services.account_analytics_service import AccountAnalyticsService
-from app.services.interfaces import ContentType, InstagramFetcherInterface
+from app.services.interfaces import ContentType, FetchedPost, InstagramFetcherInterface
 
 
 class MonitorService:
@@ -98,7 +98,7 @@ class MonitorService:
 
     # ────────────────────────────────
 
-    async def _get_or_create_post(self, account_id: int, fetched):
+    async def _get_or_create_post(self, account_id: int, fetched: FetchedPost):
         post = await self.post_repo.get_by_code(fetched.post_code)
         if post:
             return post
@@ -107,7 +107,8 @@ class MonitorService:
             account_id=account_id,
             post_code=fetched.post_code,
             url=fetched.url,
-            published_at=fetched.published_at
+            published_at=fetched.published_at,
+            post_type=fetched.post_type
         )
 
     # ────────────────────────────────

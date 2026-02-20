@@ -16,8 +16,8 @@ class User(Base):
 
     id: Mapped[str] = mapped_column(String, primary_key=True)
     telegram_chat_id: Mapped[str | None] = mapped_column(String, unique=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_active: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    last_active: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
 
     competitors = relationship("UserCompetitor", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
 
@@ -33,7 +33,7 @@ class Folder(Base):
     color: Mapped[str] = mapped_column(String, default="#0088cc")
     icon: Mapped[str] = mapped_column(String, default="📁")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     competitors = relationship(
         "UserCompetitor",
         passive_deletes=True
@@ -51,8 +51,8 @@ class InstagramAccount(Base):
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
     username: Mapped[str] = mapped_column(String, unique=True, index=True)
-    created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
-    last_checked: Mapped[datetime | None] = mapped_column(DateTime)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
+    last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     avg_reels_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
     avg_posts_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
 
@@ -68,7 +68,7 @@ class UserCompetitor(Base):
     user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"), index=True)
     account_id: Mapped[int] = mapped_column(ForeignKey("instagram_accounts.id", ondelete="CASCADE"), index=True)
     folder_id: Mapped[int | None] = mapped_column(ForeignKey("folders.id", ondelete="SET NULL"), index=True)
-    added_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    added_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     __table_args__ = (
         UniqueConstraint("user_id", "account_id"),
@@ -104,7 +104,7 @@ class InstagramPost(Base):
     )
 
     url = Column(String)
-    published_at = Column(DateTime, index=True)
+    published_at = Column(DateTime(timezone=True), index=True)
 
     account = relationship("InstagramAccount", back_populates="posts")
     snapshots = relationship("PostSnapshot", back_populates="post", cascade="all, delete-orphan", passive_deletes=True)
@@ -123,7 +123,7 @@ class PostSnapshot(Base):
     )
     views: Mapped[int] = mapped_column(Integer)
     likes: Mapped[int] = mapped_column(Integer)
-    checked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    checked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
 
     post = relationship("InstagramPost", back_populates="snapshots")
 
@@ -140,7 +140,7 @@ class Alert(Base):
     )
 
     detected_at: Mapped[datetime] = mapped_column(
-        DateTime,
+        DateTime(timezone=True),
         default=datetime.utcnow,
         index=True
     )

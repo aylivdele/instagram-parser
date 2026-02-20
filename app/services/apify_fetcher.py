@@ -56,8 +56,6 @@ class ApifyFetcher(InstagramFetcherInterface):
 
         url = f"{self.base_url}/acts/{actor_id}/runs?token={self.api_token}"
 
-        print(f"Fetch url: {url}")
-
         payload = {
             "username": [username],
             "resultsLimit": self.results_limit,
@@ -141,7 +139,7 @@ class ApifyFetcher(InstagramFetcherInterface):
 
         return clean_items
 
-    def _map_posts(self, items, results_type):
+    def _map_posts(self, items, results_type) -> List[FetchedPost]:
         items = self._filter_apify_errors(items)
         posts = []
         # self.pretty_print_json(items, 50)

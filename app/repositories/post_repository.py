@@ -2,6 +2,8 @@ from sqlalchemy import select
 from app.db.models import InstagramPost
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from app.services.interfaces import ContentType
+
 
 class PostRepository:
 
@@ -15,10 +17,11 @@ class PostRepository:
         )
         return result.scalar_one_or_none()
 
-    async def create(self, account_id: int, post_code: str, url: str, published_at):
+    async def create(self, post_type: ContentType, account_id: int, post_code: str, url: str, published_at):
         post = InstagramPost(
             account_id=account_id,
             post_code=post_code,
+            post_type=post_type,
             url=url,
             published_at=published_at
         )
