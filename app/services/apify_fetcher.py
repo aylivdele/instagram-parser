@@ -55,7 +55,7 @@ class ApifyFetcher(InstagramFetcherInterface):
 
         payload = {
             "username": username,
-            "resultsType": results_type,
+            # "resultsType": results_type,
             "resultsLimit": self.results_limit,
             "skipPinnedPosts": True,
             # "onlyPostsNewerThan": self.lookback_iso
