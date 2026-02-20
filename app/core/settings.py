@@ -1,5 +1,5 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
-from datetime import datetime, timedelta, timezone
+from datetime import datetime, timedelta
 
 
 class Settings(BaseSettings):
@@ -24,9 +24,5 @@ class Settings(BaseSettings):
     )
 
     def only_posts_newer_than(self) -> str:
-        dt = datetime.now(timezone.utc) - timedelta(hours=self.CONTENT_LOOKBACK_HOURS)
-
-        # убираем микросекунды
-        dt = dt.replace(microsecond=0)
-
-        return dt.isoformat().replace("+00:00", "")
+        dt = datetime.utcnow() - timedelta(hours=self.CONTENT_LOOKBACK_HOURS)
+        return dt.isoformat() + "Z"

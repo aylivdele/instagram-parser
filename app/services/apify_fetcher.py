@@ -53,6 +53,8 @@ class ApifyFetcher(InstagramFetcherInterface):
 
         url = f"{self.base_url}/acts/{actor_id}/runs?token={self.api_token}"
 
+        print(f"Fetch url: {url}")
+
         payload = {
             "username": username,
             "resultsLimit": self.results_limit,
