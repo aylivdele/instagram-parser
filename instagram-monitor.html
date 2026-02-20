@@ -389,15 +389,22 @@
     color: #f0f0f0;
 }
 .pagination {
+    width: 100%;
     margin-top: 20px;
     display: flex;
     gap: 10px;
     align-items: center;
+    justify-content: space-around;
 }
 
 .pagination button {
     padding: 6px 12px;
     cursor: pointer;
+    background: transparent;
+    border: 2px dashed var(--tg-theme-hint-color, #ddd);
+    border-radius: 12px;
+    color: var(--tg-theme-hint-color, #999);
+    font-size: 14px;
 }
 
 .pagination button:disabled {
