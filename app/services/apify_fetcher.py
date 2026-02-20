@@ -56,7 +56,7 @@ class ApifyFetcher(InstagramFetcherInterface):
         print(f"Fetch url: {url}")
 
         payload = {
-            "username": username,
+            "username": [username],
             "resultsLimit": self.results_limit,
             "skipPinnedPosts": True,
             "onlyPostsNewerThan": self.lookback_iso
