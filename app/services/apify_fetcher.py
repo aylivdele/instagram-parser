@@ -65,6 +65,7 @@ class ApifyFetcher(InstagramFetcherInterface):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as resp:
                 data = await resp.json()
+                self.pretty_print_json(data, 50)
                 return data["data"]["id"]
 
     async def _wait_for_finish(self, run_id: str):
