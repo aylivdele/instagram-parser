@@ -1,5 +1,6 @@
 import asyncio
 import json
+import logging
 import aiohttp
 from typing import List
 from datetime import datetime
@@ -23,6 +24,8 @@ class ApifyFetcher(InstagramFetcherInterface):
         self.lookback_iso = lookback_iso
         self.results_limit = results_limit
         self.base_url = "https://api.apify.com/v2"
+        self.logger = logging.getLogger(__name__)
+
 
     async def fetch_posts(self, username: str) -> List[FetchedPost]:
         try:
@@ -31,7 +34,7 @@ class ApifyFetcher(InstagramFetcherInterface):
 
             return reels + posts
         except Exception as e:
-            print(f"[Apify Fetcher] Error: {e}")
+            self.logger.exception("Apify fetcher exception")
             return []
 
 
@@ -65,7 +68,6 @@ class ApifyFetcher(InstagramFetcherInterface):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as resp:
                 data = await resp.json()
-                self.pretty_print_json(data, 50)
                 return data["data"]["id"]
 
     async def _wait_for_finish(self, run_id: str):
@@ -139,7 +141,7 @@ class ApifyFetcher(InstagramFetcherInterface):
     def _map_posts(self, items, results_type):
         items = self._filter_apify_errors(items)
         posts = []
-        self.pretty_print_json(items, 50)
+        # self.pretty_print_json(items, 50)
 
         for item in items:
 
