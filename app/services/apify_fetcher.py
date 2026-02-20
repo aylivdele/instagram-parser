@@ -26,17 +26,24 @@ class ApifyFetcher(InstagramFetcherInterface):
         self.base_url = "https://api.apify.com/v2"
 
     async def fetch_posts(self, username: str) -> List[FetchedPost]:
+        try:
+            reels = await self._fetch_by_type(username, "reels")
+            posts = await self._fetch_by_type(username, "posts")
 
-        reels = await self._fetch_by_type(username, "reels")
-        posts = await self._fetch_by_type(username, "posts")
+            return reels + posts
+        except Exception as e:
+            print(f"[Apify Fetcher] Error: {e}")
+            return []
 
-        return reels + posts
 
     async def _fetch_by_type(self, username: str, results_type: str):
 
+        print(f"[Apify Fetcher] Fetching data for username {username} with type {results_type}")
         run_id = await self._start_actor(username, results_type)
         dataset_id = await self._wait_for_finish(run_id)
+        print(f"[Apify Fetcher] Dataset_id for username {username} with type {results_type}: {dataset_id}")
         items = await self._get_dataset_items(dataset_id)
+        print(f"[Apify Fetcher] Got {len(items)} items for username {username} with type {results_type}")
 
         return self._map_posts(items, results_type)
 
