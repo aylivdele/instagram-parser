@@ -159,7 +159,7 @@ class ApifyFetcher(InstagramFetcherInterface):
                     url=item.get("url"),
                     views=views,
                     likes=item.get("likesCount", 0),
-                    published_at=datetime.fromtimestamp(
+                    published_at=datetime.fromisoformat(
                         item.get("timestamp")
                     ),
                     post_type=post_type
