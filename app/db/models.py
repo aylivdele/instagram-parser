@@ -19,7 +19,7 @@ class User(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     last_active: Mapped[datetime | None] = mapped_column(DateTime)
 
-    competitors = relationship("UserCompetitor", back_populates="user", cascade="all, delete")
+    competitors = relationship("UserCompetitor", back_populates="user", cascade="all, delete-orphan", passive_deletes=True)
 
 
 # ───────────────── FOLDERS ─────────────────
@@ -34,6 +34,10 @@ class Folder(Base):
     icon: Mapped[str] = mapped_column(String, default="📁")
     sort_order: Mapped[int] = mapped_column(Integer, default=0)
     created_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
+    competitors = relationship(
+        "UserCompetitor",
+        passive_deletes=True
+    )
 
     __table_args__ = (
         UniqueConstraint("user_id", "name"),
@@ -52,7 +56,7 @@ class InstagramAccount(Base):
     avg_reels_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
     avg_posts_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
 
-    posts = relationship("InstagramPost", back_populates="account", cascade="all, delete")
+    posts = relationship("InstagramPost", back_populates="account", cascade="all, delete-orphan", passive_deletes=True)
 
 
 # ───────────────── USER COMPETITORS ─────────────────
@@ -87,7 +91,11 @@ class InstagramPost(Base):
     __tablename__ = "instagram_posts"
 
     id = Column(Integer, primary_key=True)
-    account_id = Column(Integer, ForeignKey("instagram_accounts.id"))
+    account_id = Column(
+        Integer,
+        ForeignKey("instagram_accounts.id", ondelete="CASCADE"),
+        index=True
+    )
     post_code = Column(String, unique=True, index=True)
 
     post_type: Mapped[PostType] = mapped_column(
@@ -99,7 +107,7 @@ class InstagramPost(Base):
     published_at = Column(DateTime, index=True)
 
     account = relationship("InstagramAccount", back_populates="posts")
-    snapshots = relationship("PostSnapshot", back_populates="post", cascade="all, delete")
+    snapshots = relationship("PostSnapshot", back_populates="post", cascade="all, delete-orphan", passive_deletes=True)
 
 
 
@@ -109,7 +117,10 @@ class PostSnapshot(Base):
     __tablename__ = "post_snapshots"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    post_id: Mapped[int] = mapped_column(ForeignKey("instagram_posts.id", ondelete="CASCADE"))
+    post_id: Mapped[int] = mapped_column(
+        ForeignKey("instagram_posts.id", ondelete="CASCADE"),
+        index=True
+    )
     views: Mapped[int] = mapped_column(Integer)
     likes: Mapped[int] = mapped_column(Integer)
     checked_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
@@ -123,9 +134,18 @@ class Alert(Base):
     __tablename__ = "alerts"
 
     id: Mapped[int] = mapped_column(BigInteger, primary_key=True)
-    user_id: Mapped[str] = mapped_column(ForeignKey("users.id", ondelete="CASCADE"))
+    user_id: Mapped[str] = mapped_column(
+        ForeignKey("users.id", ondelete="CASCADE"),
+        index=True
+    )
+
+    detected_at: Mapped[datetime] = mapped_column(
+        DateTime,
+        default=datetime.utcnow,
+        index=True
+    )
+
     post_id: Mapped[int] = mapped_column(ForeignKey("instagram_posts.id", ondelete="CASCADE"))
-    detected_at: Mapped[datetime] = mapped_column(DateTime, default=datetime.utcnow)
     views: Mapped[int] = mapped_column(Integer)
     views_per_hour: Mapped[float] = mapped_column(Float)
     avg_views_per_hour: Mapped[float] = mapped_column(Float)
@@ -134,4 +154,5 @@ class Alert(Base):
 
     __table_args__ = (
         UniqueConstraint("user_id", "post_id"),
+        Index("ix_alert_user_detected", "user_id", "detected_at")
     )
