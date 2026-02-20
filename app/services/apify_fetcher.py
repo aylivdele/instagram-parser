@@ -68,6 +68,9 @@ class ApifyFetcher(InstagramFetcherInterface):
         async with aiohttp.ClientSession() as session:
             async with session.post(url, json=payload) as resp:
                 data = await resp.json()
+                if 'data' not in data:
+                    self.pretty_print_json(data, 100)
+                    raise Exception('Unexpected answer from apify')
                 return data["data"]["id"]
 
     async def _wait_for_finish(self, run_id: str):
