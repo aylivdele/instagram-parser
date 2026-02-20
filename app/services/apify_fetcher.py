@@ -16,12 +16,10 @@ class ApifyFetcher(InstagramFetcherInterface):
     def __init__(
         self,
         api_token: str,
-        actor_id: str,
         lookback_iso: str,
         results_limit: int
     ):
         self.api_token = api_token
-        self.actor_id = actor_id
         self.lookback_iso = lookback_iso
         self.results_limit = results_limit
         self.base_url = "https://api.apify.com/v2"
@@ -51,14 +49,15 @@ class ApifyFetcher(InstagramFetcherInterface):
 
     async def _start_actor(self, username: str, results_type: str):
 
-        url = f"{self.base_url}/acts/{self.actor_id}/runs?token={self.api_token}"
+        actor_id = 'apify~instagram-post-scraper' if results_type == 'posts' else 'apify~instagram-reels-scraper'
+
+        url = f"{self.base_url}/acts/{actor_id}/runs?token={self.api_token}"
 
         payload = {
             "username": username,
-            # "resultsType": results_type,
             "resultsLimit": self.results_limit,
             "skipPinnedPosts": True,
-            # "onlyPostsNewerThan": self.lookback_iso
+            "onlyPostsNewerThan": self.lookback_iso
         }
 
         async with aiohttp.ClientSession() as session:

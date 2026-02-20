@@ -44,7 +44,6 @@ class AppFactory:
 
         fetcher = ApifyFetcher(
             api_token=self.settings.APIFY_TOKEN,
-            actor_id=self.settings.APIFY_ACTOR_ID,
             lookback_iso=self.settings.only_posts_newer_than(),
             results_limit=self.settings.APIFY_RESULTS_LIMIT
         )

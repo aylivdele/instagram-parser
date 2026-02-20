@@ -8,7 +8,6 @@ class Settings(BaseSettings):
 
     TELEGRAM_BOT_TOKEN: str
     APIFY_TOKEN: str
-    APIFY_ACTOR_ID: str
 
     MONITOR_INTERVAL: int = 60
 
@@ -26,4 +25,8 @@ class Settings(BaseSettings):
 
     def only_posts_newer_than(self) -> str:
         dt = datetime.now(timezone.utc) - timedelta(hours=self.CONTENT_LOOKBACK_HOURS)
-        return dt.date().isoformat()
+
+        # убираем микросекунды
+        dt = dt.replace(microsecond=0)
+
+        return dt.isoformat().replace("+00:00", "")
