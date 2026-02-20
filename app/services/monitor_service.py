@@ -2,6 +2,7 @@ from datetime import datetime
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
+from app.db.models import InstagramAccount
 from app.repositories.account_repository import AccountRepository
 from app.repositories.post_repository import PostRepository
 from app.repositories.snapshot_repository import SnapshotRepository
@@ -48,7 +49,7 @@ class MonitorService:
     # Обработка одного аккаунта
     # ────────────────────────────────
 
-    async def _process_account(self, account):
+    async def _process_account(self, account: InstagramAccount):
 
         fetched_posts = await self.fetcher.fetch_posts(account.username)
 
@@ -71,7 +72,7 @@ class MonitorService:
                 post_id=post.id,
                 published_at=post.published_at,
                 snapshots=snapshots,
-                account_avg_speed=account.avg_views_per_hour
+                account_avg_speed=account.avg_posts_views_per_hour if fetched.post_type == ContentType.POST else account.avg_reels_views_per_hour
             )
 
             if fetched.post_type == ContentType.REEL:
