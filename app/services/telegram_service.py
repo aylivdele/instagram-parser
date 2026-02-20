@@ -54,7 +54,7 @@ class TelegramNotificationService:
                 & (UserCompetitor.user_id == Alert.user_id)
             )
             .join(Folder, Folder.id == UserCompetitor.folder_id)
-            .where(Alert.sent == False)
+            .where(Alert.sent_to_telegram == False)
         )
 
         return result.all()

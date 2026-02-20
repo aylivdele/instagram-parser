@@ -40,6 +40,7 @@ class ApifyFetcher(InstagramFetcherInterface):
 
         print(f"[Apify Fetcher] Fetching data for username {username} with type {results_type}")
         run_id = await self._start_actor(username, results_type)
+        print(f"[Apify Fetcher] Started run with id {run_id} for username {username} with type {results_type}")
         dataset_id = await self._wait_for_finish(run_id)
         print(f"[Apify Fetcher] Dataset_id for username {username} with type {results_type}: {dataset_id}")
         items = await self._get_dataset_items(dataset_id)
