@@ -1,4 +1,5 @@
 import asyncio
+import json
 import aiohttp
 from typing import List
 from datetime import datetime
@@ -89,12 +90,41 @@ class ApifyFetcher(InstagramFetcherInterface):
         async with aiohttp.ClientSession() as session:
             async with session.get(url) as resp:
                 return await resp.json()
+            
+    
+
+    def pretty_print_json(data, max_str_len: int = 200):
+        def truncate(obj):
+            if isinstance(obj, dict):
+                return {k: truncate(v) for k, v in obj.items()}
+
+            if isinstance(obj, list):
+                return [truncate(v) for v in obj]
+
+            if isinstance(obj, str):
+                if len(obj) > max_str_len:
+                    return obj[:max_str_len] + "...[TRUNCATED]"
+                return obj
+
+            return obj
+
+        truncated = truncate(data)
+
+        print(
+            json.dumps(
+                truncated,
+                indent=2,
+                ensure_ascii=False
+            )
+        )
 
     def _map_posts(self, items, results_type):
 
         posts = []
+        self.pretty_print_json(items, 50)
 
         for item in items:
+
 
             if results_type == "reels":
                 post_type = ContentType.REEL
@@ -105,12 +135,12 @@ class ApifyFetcher(InstagramFetcherInterface):
 
             posts.append(
                 FetchedPost(
-                    post_code=item["shortCode"],
-                    url=item["url"],
+                    post_code=item.get("shortCode"),
+                    url=item.get("url"),
                     views=views,
                     likes=item.get("likesCount", 0),
                     published_at=datetime.fromtimestamp(
-                        item["timestamp"]
+                        item.get("timestamp")
                     ),
                     post_type=post_type
                 )
