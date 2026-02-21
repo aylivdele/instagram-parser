@@ -1,3 +1,5 @@
+from datetime import datetime
+
 import aiohttp
 from sqlalchemy import select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -20,13 +22,13 @@ class TelegramNotificationService:
 
         alerts = await self._get_unsent_alerts()
 
-        for alert, post_url, username, folder_name in alerts:
+        for alert, post_url, username, folder_name, date in alerts:
             chat_id = await self._get_user_chat_id(alert.user_id)
 
             if not chat_id:
                 continue
 
-            message = await self._build_message(alert, post_url, username, folder_name)
+            message = await self._build_message(alert, post_url, username, date, folder_name)
 
             success = await self._send_message(chat_id, message)
 
@@ -44,7 +46,8 @@ class TelegramNotificationService:
                 Alert,
                 InstagramPost.url,
                 InstagramAccount.username,
-                Folder.name
+                Folder.name,
+                InstagramPost.published_at
             )
             .join(InstagramPost, Alert.post_id == InstagramPost.id)
             .join(InstagramAccount, InstagramPost.account_id == InstagramAccount.id)
@@ -53,7 +56,7 @@ class TelegramNotificationService:
                 (UserCompetitor.account_id == InstagramAccount.id)
                 & (UserCompetitor.user_id == Alert.user_id)
             )
-            .join(Folder, Folder.id == UserCompetitor.folder_id)
+            .outerjoin(Folder, Folder.id == UserCompetitor.folder_id)
             .where(Alert.sent_to_telegram == False)
         )
 
@@ -72,11 +75,12 @@ class TelegramNotificationService:
 
     # ────────────────────────────────
 
-    async def _build_message(self, alert: Alert, post_url: str, username: str, folder_name: str | None = None):
+    async def _build_message(self, alert: Alert, post_url: str, username: str, date: datetime, folder_name: str | None = None):
 
         return (
             f"🚀 <b>Обнаружен вирусный пост!</b>\n\n"
             f"👤 Аккаунт: @{username}\n"
+            f"🗓 Дата поста: {date.strftime("%m-%d %H:%M")}\n"
             f"📁 Папка: {folder_name if folder_name else 'Без папки'}\n"
             f"📊 Просмотры: {alert.views:,}\n"
             f"⚡ Скорость: {alert.views_per_hour:.0f} в час\n"
