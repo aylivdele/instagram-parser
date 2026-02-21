@@ -77,7 +77,7 @@ class TelegramNotificationService:
         return (
             f"🚀 <b>Обнаружен вирусный пост!</b>\n\n"
             f"👤 Аккаунт: @{username}\n"
-            f"📁 Папка: {folder_name if folder_name else 'Без папки'}"
+            f"📁 Папка: {folder_name if folder_name else 'Без папки'}\n"
             f"📊 Просмотры: {alert.views:,}\n"
             f"⚡ Скорость: {alert.views_per_hour:.0f} в час\n"
             f"📈 Рост: +{alert.growth_rate:.0f}%\n\n"

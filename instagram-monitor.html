@@ -391,6 +391,7 @@
 .pagination {
     width: 100%;
     margin-top: 20px;
+    margin-bottom: 20px;
     display: flex;
     gap: 10px;
     align-items: center;
@@ -927,7 +928,7 @@
 
             list.innerHTML = alerts.map(alert => {
                 
-                if (selectedFolderId && alert.folderId === selectedFolderId) {
+                if (selectedFolderId && alert.folderId !== selectedFolderId) {
                     return ''
                 }
                 // Показываем badge папки только когда отображаем всех
@@ -942,7 +943,7 @@
                         <div class="alert-title">@${alert.username}${folderBadge}</div>
                     </div>
                     <div class="alert-subtitle">
-                        Рост: +${alert.growth}% от обычного
+                        Рост: +${Math.round(alert.growth)}% от обычного
                     </div>
                     <div class="alert-stats">
                         <div>📊 ${formatNumber(alert.currentViews)} просмотров</div>
