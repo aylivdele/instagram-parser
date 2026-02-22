@@ -85,7 +85,7 @@ class LobstrClient:
         self._session = session
 
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
-        return await self._request_with_retry(method, path, 0, kwargs)
+        return await self._request_with_retry(method, path, 0, **kwargs)
     
     async def _request_with_retry(self, method: str, path: str, retry_count: int, **kwargs: Any) -> Any:
         url = f"{BASE_URL}{path}"
@@ -93,6 +93,7 @@ class LobstrClient:
             method, url, headers=self._headers, **kwargs
         ) as resp:
             if resp.status == 429 and retry_count < 3:
+                log.warning(f"Rate limit on request to {url}, waiting 70 seconds before retry...")
                 await asyncio.sleep(70)
                 return await self._request_with_retry(method, path, retry_count + 1, **kwargs)
             resp.raise_for_status()
