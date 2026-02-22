@@ -9,10 +9,12 @@ class Settings(BaseSettings):
     TELEGRAM_BOT_TOKEN: str
     APIFY_TOKEN: str
 
+    LOBSTR_REELS_CRAWLER_HASH: str
+    LOBSTR_API_KEY: str
     MONITOR_INTERVAL: int = 60
 
     CONTENT_LOOKBACK_HOURS: int = 48
-    APIFY_RESULTS_LIMIT: int = 30
+    RESULTS_LIMIT: int = 30
 
     TREND_GROWTH_THRESHOLD: int = 150
     TREND_MAX_POST_AGE_HOURS: int = 48

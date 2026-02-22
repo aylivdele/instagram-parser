@@ -1,7 +1,9 @@
-from typing import List
+from typing import Callable, List
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
+
+from app.db.models import InstagramAccount
 
 
 class ContentType(str, Enum):
@@ -11,7 +13,7 @@ class ContentType(str, Enum):
 
 @dataclass
 class FetchedPost:
-    post_code: str
+    post_code: str #unique id of post/reel
     url: str
     views: int
     likes: int
@@ -20,5 +22,5 @@ class FetchedPost:
 
 
 class InstagramFetcherInterface:
-    async def fetch_posts(self, username: str) -> List[FetchedPost]:
+    async def process_accounts(self, accounts: List[InstagramAccount], process_callback: Callable[[InstagramAccount, List[FetchedPost]], None]):
         raise NotImplementedError

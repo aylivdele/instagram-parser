@@ -41,17 +41,9 @@ class MonitorService:
     async def monitor_cycle(self):
 
         accounts = await self._get_accounts_with_subscribers()
+        self.fetcher.process_accounts(accounts, self._process_posts)
 
-        for account in accounts:
-            await self._process_account(account)
-
-    # ────────────────────────────────
-    # Обработка одного аккаунта
-    # ────────────────────────────────
-
-    async def _process_account(self, account: InstagramAccount):
-
-        fetched_posts = await self.fetcher.fetch_posts(account.username)
+    async def _process_posts(self, account: InstagramAccount, fetched_posts: List[FetchedPost]):
 
         reels_speeds = []
         posts_speeds = []

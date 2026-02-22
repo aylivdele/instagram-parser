@@ -1,6 +1,7 @@
 from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 
 from app.core.settings import Settings
+from app.services.lobstr_fetcher import LobstrFetcher
 from app.services.scheduler import Scheduler
 from app.services.trend_service import TrendService, TrendConfig
 from app.services.account_analytics_service import AccountAnalyticsService
@@ -41,10 +42,9 @@ class AppFactory:
 
         analytics_service = AccountAnalyticsService()
 
-        fetcher = ApifyFetcher(
-            api_token=self.settings.APIFY_TOKEN,
-            lookback_iso=self.settings.only_posts_newer_than(),
-            results_limit=self.settings.APIFY_RESULTS_LIMIT
+        fetcher = LobstrFetcher(
+            api_key=self.settings.LOBSTR_API_KEY,
+            crawler_hash=self.settings.LOBSTR_REELS_CRAWLER_HASH,
         )
 
 
