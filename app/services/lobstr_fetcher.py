@@ -87,7 +87,7 @@ class LobstrClient:
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         return await self._request_with_retry(method, path, 0, kwargs)
     
-    async def _request_with_retry(self, method: str, path: str, retry_count: int = 0, **kwargs: Any):
+    async def _request_with_retry(self, method: str, path: str, retry_count: int, **kwargs: Any):
         url = f"{BASE_URL}{path}"
         async with self._session.request(
             method, url, headers=self._headers, **kwargs
