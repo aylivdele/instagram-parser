@@ -87,14 +87,14 @@ class LobstrClient:
     async def _request(self, method: str, path: str, **kwargs: Any) -> Any:
         return await self._request_with_retry(method, path, 0, kwargs)
     
-    async def _request_with_retry(self, method: str, path: str, retry_count: int, **kwargs: Any):
+    async def _request_with_retry(self, method: str, path: str, retry_count: int, **kwargs: Any) -> Any:
         url = f"{BASE_URL}{path}"
         async with self._session.request(
             method, url, headers=self._headers, **kwargs
         ) as resp:
             if resp.status == 429 and retry_count < 3:
                 await asyncio.sleep(70)
-                return await self._request_with_retry(method, path, retry_count + 1, kwargs)
+                return await self._request_with_retry(method, path, retry_count + 1, **kwargs)
             resp.raise_for_status()
             return await resp.json()
     # --- Squids ---
