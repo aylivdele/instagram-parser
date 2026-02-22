@@ -17,10 +17,10 @@ class AppFactory:
 
     def create_scheduler(self):
 
-        print("Creating worker with settings:")
-        print(f"Apify token: {self.settings.APIFY_TOKEN}")
-        print(f"Lookback iso: {self.settings.only_posts_newer_than()}")
-        print(f"Results limit: {self.settings.APIFY_RESULTS_LIMIT}")
+        # print("Creating worker with settings:")
+        # print(f"Apify token: {self.settings.APIFY_TOKEN}")
+        # print(f"Lookback iso: {self.settings.only_posts_newer_than()}")
+        # print(f"Results limit: {self.settings.RESULTS_LIMIT}")
 
         engine = create_async_engine(
             self.settings.DATABASE_URL,

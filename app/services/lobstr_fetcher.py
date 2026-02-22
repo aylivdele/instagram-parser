@@ -406,35 +406,37 @@ class LobstrFetcher(InstagramFetcherInterface):
     ) -> None:
         if not accounts:
             return
+        try:
+            async with aiohttp.ClientSession() as session:
+                client = LobstrClient(self._api_key, session)
+                store = SquidStore()
+                manager = SquidManager(client, self._crawler_hash, store)
 
-        async with aiohttp.ClientSession() as session:
-            client = LobstrClient(self._api_key, session)
-            store = SquidStore()
-            manager = SquidManager(client, self._crawler_hash, store)
+                # 1. Получаем переиспользуемый Squid
+                squid_hash = await manager.get_squid()
 
-            # 1. Получаем переиспользуемый Squid
-            squid_hash = await manager.get_squid()
+                usernames = [account.username for account in accounts]
 
-            usernames = [account.username for account in accounts]
+                # 2. Синхронизируем tasks (добавляем только новые usernames)
+                await manager.ensure_tasks(squid_hash, usernames)
 
-            # 2. Синхронизируем tasks (добавляем только новые usernames)
-            await manager.ensure_tasks(squid_hash, usernames)
+                # 3. Запускаем один общий Run
+                log.info("Запускаем Run для Squid %s (%d usernames)...", squid_hash, len(usernames))
+                run_hash = await client.create_run(squid_hash)
+                log.info("Run запущен: %s", run_hash)
 
-            # 3. Запускаем один общий Run
-            log.info("Запускаем Run для Squid %s (%d usernames)...", squid_hash, len(usernames))
-            run_hash = await client.create_run(squid_hash)
-            log.info("Run запущен: %s", run_hash)
+                # 4. Ждём завершения
+                all_results = await self._poll_until_done(client, run_hash)
+                log.info("Run завершён, всего результатов: %d", len(all_results))
 
-            # 4. Ждём завершения
-            all_results = await self._poll_until_done(client, run_hash)
-            log.info("Run завершён, всего результатов: %d", len(all_results))
-
-        # 5. Параллельно фильтруем по username и вызываем callback
-        # (вне aiohttp.ClientSession — сессия больше не нужна)
-        await asyncio.gather(*[
-            self._dispatch(all_results, account, process_callback)
-            for account in accounts
-        ], return_exceptions=True)
+            # 5. Параллельно фильтруем по username и вызываем callback
+            # (вне aiohttp.ClientSession — сессия больше не нужна)
+            await asyncio.gather(*[
+                self._dispatch(all_results, account, process_callback)
+                for account in accounts
+            ], return_exceptions=True)
+        except Exception:
+            log.exception("Exception while processing accounts")
 
     async def _dispatch(
         self,
