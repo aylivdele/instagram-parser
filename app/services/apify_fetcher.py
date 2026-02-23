@@ -2,9 +2,10 @@ import asyncio
 import json
 import logging
 import aiohttp
-from typing import List
+from typing import Callable, List
 from datetime import datetime
 
+from app.db.models import InstagramAccount
 from app.services.interfaces import (
     InstagramFetcherInterface,
     FetchedPost,
@@ -27,12 +28,13 @@ class ApifyFetcher(InstagramFetcherInterface):
         self.logger = logging.getLogger(__name__)
 
 
-    async def fetch_posts(self, username: str) -> List[FetchedPost]:
+    async def process_accounts(self, accounts: List[InstagramAccount], process_callback: Callable[[InstagramAccount, List[FetchedPost]], None]):
         try:
-            reels = await self._fetch_by_type(username, "reels")
-            posts = await self._fetch_by_type(username, "posts")
+            for account in accounts:
+                reels = await self._fetch_by_type(account.username, "reels")
+                # posts = await self._fetch_by_type(username, "posts")
+                await process_callback(account, reels)
 
-            return reels + posts
         except Exception as e:
             self.logger.exception("Apify fetcher exception")
             return []

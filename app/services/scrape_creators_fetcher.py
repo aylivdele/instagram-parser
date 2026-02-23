@@ -243,62 +243,57 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         account: InstagramAccount,
         callback: Callable[[InstagramAccount, List[FetchedPost]], None],
     ) -> None:
-      cutoff: datetime = datetime.now(tz=timezone.utc) - timedelta(hours=self._max_age_hours)
-      username = account.username
-      log.info("[%s] Загружаем Reels не старше %g ч (cutoff: %s)", username, self._max_age_hours, cutoff.isoformat())
+        cutoff: datetime = datetime.now(tz=timezone.utc) - timedelta(hours=self._max_age_hours)
+        username = account.username
+        log.info("[%s] Загружаем Reels не старше %g ч (cutoff: %s)", username, self._max_age_hours, cutoff.isoformat())
 
-      all_posts: List[FetchedPost] = []
-      max_id: Optional[str] = None
-      page = 0
+        all_posts: List[FetchedPost] = []
+        max_id: Optional[str] = None
+        page = 0
 
-      while True:
-          page += 1
-          log.debug("[%s] Страница %d (max_id=%s)", username, page, max_id)
+        while True:
+            page += 1
+            log.info("[%s] Страница %d (max_id=%s)", username, page, max_id)
 
-          try:
-              data = await client.get_reels_page(username, max_id=max_id)
-          except aiohttp.ClientResponseError as exc:
-              if exc.status == 404:
-                  log.warning("[%s] Профиль не найден (404)", username)
-                  break
-              raise
+            try:
+                data = await client.get_reels_page(username, max_id=max_id)
+            except aiohttp.ClientResponseError as exc:
+                if exc.status == 404:
+                    log.warning("[%s] Профиль не найден (404)", username)
+                    break
+                raise
 
-          raw_items: List[dict] = data.get("items") or []
-          posts = _parse_items(raw_items)
+            raw_items: List[dict] = data.get("items") or []
+            posts = _parse_items(raw_items)
 
-          # Reels на странице отсортированы от новых к старым.
-          # Как только встречаем пост старше cutoff — дальше смотреть нет смысла.
-          stop_pagination = False
-          for post in posts:
-              if post.published_at < cutoff:
-                  stop_pagination = True
-                  log.debug("[%s] Найден пост старше cutoff (%s), останавливаем пагинацию", username, post.published_at.isoformat())
-                  break
-              all_posts.append(post)
+            filtered_posts = [post for post in posts if post.published_at >= cutoff]
+            all_posts.extend(filtered_posts)
 
-          log.debug("[%s] Страница %d: принято %d, всего: %d", username, page, len(all_posts) - (len(all_posts) - len([p for p in posts if p.published_at >= cutoff])), len(all_posts))
+            if len(filtered_posts) < len(posts):
+                log.info("[%s] Найден пост старше cutoff, останавливаем пагинацию", username)
+                break
 
-          if stop_pagination:
-              break
-          
-          paging_info = data.get("paging_info")
-          if not paging_info:
-              break
+            log.info("[%s] Страница %d: принято %d, всего: %d", username, page, len(all_posts) - (len(all_posts) - len([p for p in posts if p.published_at >= cutoff])), len(all_posts))
 
-          more_available: bool = paging_info.get("more_available", False)
-          next_max_id: Optional[str] = paging_info.get("max_id") or None
+            
+            paging_info = data.get("paging_info")
+            if not paging_info:
+                break
 
-          if not more_available or not next_max_id:
-              break
+            more_available: bool = paging_info.get("more_available", False)
+            next_max_id: Optional[str] = paging_info.get("max_id") or None
 
-          max_id = next_max_id
+            if not more_available or not next_max_id:
+                break
 
-          if self._page_delay > 0:
-              await asyncio.sleep(self._page_delay)
+            max_id = next_max_id
 
-      log.info("[%s] Готово: %d Reels за %d страниц (не старше %g ч)", username, len(all_posts), page, self._max_age_hours)
+            if self._page_delay > 0:
+                await asyncio.sleep(self._page_delay)
 
-      if all_posts:
-          await callback(account, all_posts)
-      else:
-          log.warning("[%s] Нет Reels в заданном временном окне", username)
+        log.info("[%s] Готово: %d Reels за %d страниц (не старше %g ч)", username, len(all_posts), page, self._max_age_hours)
+
+        if all_posts:
+            await callback(account, all_posts)
+        else:
+            log.warning("[%s] Нет Reels в заданном временном окне", username)
