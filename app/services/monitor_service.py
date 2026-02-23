@@ -1,4 +1,5 @@
 from datetime import datetime
+import logging
 from sqlalchemy.ext.asyncio import AsyncSession
 from typing import List
 
@@ -33,6 +34,7 @@ class MonitorService:
         self.snapshot_repo = SnapshotRepository(session)
         self.user_comp_repo = UserCompetitorRepository(session)
         self.alert_repo = AlertRepository(session)
+        self.logger = logging.getLogger(__name__)
 
     # ────────────────────────────────
     # Публичный метод: цикл по всем аккаунтам
@@ -44,6 +46,7 @@ class MonitorService:
         await self.fetcher.process_accounts(accounts, self._process_posts)
 
     async def _process_posts(self, account: InstagramAccount, fetched_posts: List[FetchedPost]):
+        self.logger.info(f"Processing {len(fetched_posts)} for user {account.username}")
 
         reels_speeds = []
         posts_speeds = []
@@ -78,6 +81,7 @@ class MonitorService:
                     account.id,
                     result
                 )
+            self.logger.info(f"{account.username}: Post {fetched.post_code}\nViews: {result.current_views}\nAvg. vph: {result.avg_views_per_hour}")
 
         account.avg_reels_views_per_hour = \
             self.analytics_service.calculate_account_average_speed(reels_speeds)

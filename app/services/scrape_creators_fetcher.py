@@ -295,6 +295,6 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
       log.info("[%s] Готово: %d Reels за %d страниц (не старше %g ч)", username, len(all_posts), page, self._max_age_hours)
 
       if all_posts:
-          callback(account, all_posts)
+          await callback(account, all_posts)
       else:
           log.warning("[%s] Нет Reels в заданном временном окне", username)
