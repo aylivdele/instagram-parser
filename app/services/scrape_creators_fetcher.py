@@ -280,9 +280,13 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
 
           if stop_pagination:
               break
+          
+          paging_info = data.get("paging_info")
+          if not paging_info:
+              break
 
-          more_available: bool = data.get("more_available", False)
-          next_max_id: Optional[str] = data.get("next_max_id") or None
+          more_available: bool = paging_info.get("more_available", False)
+          next_max_id: Optional[str] = paging_info.get("max_id") or None
 
           if not more_available or not next_max_id:
               break
