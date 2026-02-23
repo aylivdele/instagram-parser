@@ -210,7 +210,7 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         self._page_delay = page_delay
         self._max_age_hours = max_age_hours
 
-    async def process_usernames(
+    async def process_accounts(
         self,
         accounts: List[InstagramAccount], 
         process_callback: Callable[[InstagramAccount, List[FetchedPost]], None]
