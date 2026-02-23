@@ -1,4 +1,5 @@
 from datetime import datetime
+from zoneinfo import ZoneInfo
 
 import aiohttp
 from sqlalchemy import select
@@ -6,6 +7,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.models import Alert, Folder, User, InstagramPost, InstagramAccount, UserCompetitor
 
+MSK = ZoneInfo("Europe/Moscow")
 
 class TelegramNotificationService:
 
@@ -80,7 +82,7 @@ class TelegramNotificationService:
         return (
             f"🚀 <b>Обнаружен вирусный пост!</b>\n\n"
             f"👤 Аккаунт: @{username}\n"
-            f"🗓 Дата поста: {date.strftime("%m-%d %H:%M")}\n"
+            f"🗓 Дата поста: {date.astimezone(MSK).strftime('%m-%d %H:%M')}\n"
             f"📁 Папка: {folder_name if folder_name else 'Без папки'}\n"
             f"📊 Просмотры: {alert.views:,}\n"
             f"⚡ Скорость: {alert.views_per_hour:.0f} в час\n"
