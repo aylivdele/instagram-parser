@@ -38,7 +38,7 @@ from typing import Any, Callable, List, Optional
 import aiohttp
 
 from app.db.models import InstagramAccount
-from app.services.interfaces import FetchedPost, InstagramFetcherInterface
+from app.services.interfaces import ContentType, FetchedPost, InstagramFetcherInterface
 
 # ---------------------------------------------------------------------------
 # Константы
