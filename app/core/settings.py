@@ -11,14 +11,17 @@ class Settings(BaseSettings):
 
     LOBSTR_REELS_CRAWLER_HASH: str
     LOBSTR_API_KEY: str
-    MONITOR_INTERVAL: int = 60
 
-    CONTENT_LOOKBACK_HOURS: int = 48
+    SC_API_KEY: str
+
+    MONITOR_INTERVAL: int = 120
+
+    CONTENT_LOOKBACK_HOURS: int = 24
     RESULTS_LIMIT: int = 30
 
     TREND_GROWTH_THRESHOLD: int = 150
-    TREND_MAX_POST_AGE_HOURS: int = 48
-    TREND_MIN_SNAPSHOTS: int = 2
+    TREND_MAX_POST_AGE_HOURS: int = 24
+    TREND_MIN_SNAPSHOTS: int = 0
 
     model_config = SettingsConfigDict(
         env_file=".env",

@@ -3,6 +3,7 @@ from sqlalchemy.ext.asyncio import create_async_engine, async_sessionmaker
 from app.core.settings import Settings
 from app.services.lobstr_fetcher import LobstrFetcher
 from app.services.scheduler import Scheduler
+from app.services.scrape_creators_fetcher import ScrapeCreatorsFetcher
 from app.services.trend_service import TrendService, TrendConfig
 from app.services.account_analytics_service import AccountAnalyticsService
 from app.services.monitor_service import MonitorService
@@ -42,11 +43,14 @@ class AppFactory:
 
         analytics_service = AccountAnalyticsService()
 
-        fetcher = LobstrFetcher(
-            api_key=self.settings.LOBSTR_API_KEY,
-            crawler_hash=self.settings.LOBSTR_REELS_CRAWLER_HASH,
+        # fetcher = LobstrFetcher(
+        #     api_key=self.settings.LOBSTR_API_KEY,
+        #     crawler_hash=self.settings.LOBSTR_REELS_CRAWLER_HASH,
+        # )
+        fetcher = ScrapeCreatorsFetcher(
+            api_key=self.settings.SC_API_KEY,
+            max_age_hours=self.settings.CONTENT_LOOKBACK_HOURS
         )
-
 
         def monitor_factory(session):
             return MonitorService(
