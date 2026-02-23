@@ -10,7 +10,7 @@ from app.repositories.snapshot_repository import SnapshotRepository
 from app.repositories.user_competitor_repository import UserCompetitorRepository
 from app.repositories.alert_repository import AlertRepository
 
-from app.services.trend_service import TrendService, SnapshotData
+from app.services.trend_service import PostTrendResult, TrendService, SnapshotData
 from app.services.account_analytics_service import AccountAnalyticsService
 from app.services.interfaces import ContentType, FetchedPost, InstagramFetcherInterface
 
@@ -75,13 +75,12 @@ class MonitorService:
             else:
                 posts_speeds.append(result.views_per_hour)
 
-
             if result.is_trending:
                 await self._create_alerts_for_account_users(
                     account.id,
                     result
                 )
-            self.logger.info(f"{account.username}: Post {fetched.post_code}\nViews: {result.current_views}\nAvg. vph: {result.avg_views_per_hour}")
+            self.logger.info(f"{account.username}: Post {fetched.post_code} Views: {result.current_views} Vph: {result.views_per_hour} Growth: {result.growth_rate} Avph: {result.avg_views_per_hour}")
 
         account.avg_reels_views_per_hour = \
             self.analytics_service.calculate_account_average_speed(reels_speeds)
@@ -132,7 +131,7 @@ class MonitorService:
 
     # ────────────────────────────────
 
-    async def _create_alerts_for_account_users(self, account_id: int, trend_result):
+    async def _create_alerts_for_account_users(self, account_id: int, trend_result: PostTrendResult):
 
         users = await self.user_comp_repo.get_users_by_account(account_id)
 
