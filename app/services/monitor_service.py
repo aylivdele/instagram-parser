@@ -80,7 +80,7 @@ class MonitorService:
                     account.id,
                     result
                 )
-            self.logger.info(f"{account.username}: Post {fetched.post_code} Views: {result.current_views} Vph: {result.views_per_hour} Growth: {result.growth_rate} Avph: {result.avg_views_per_hour}")
+            self.logger.info(f"{account.username}: Post {fetched.post_code} Views: {result.current_views} Vph: {result.views_per_hour} Growth: {result.growth_rate} Avph: {result.avg_views_per_hour} Trending: {result.is_trending}")
 
         account.avg_reels_views_per_hour = \
             self.analytics_service.calculate_account_average_speed(reels_speeds)

@@ -35,9 +35,9 @@ class AppFactory:
 
         trend_service = TrendService(
             TrendConfig(
-                growth_threshold_percent=150,
-                max_post_age_hours=24,
-                min_snapshots=2
+                growth_threshold_percent=self.settings.TREND_GROWTH_THRESHOLD,
+                max_post_age_hours=self.settings.TREND_MAX_POST_AGE_HOURS,
+                min_snapshots=self.settings.TREND_MIN_SNAPSHOTS
             )
         )
 
