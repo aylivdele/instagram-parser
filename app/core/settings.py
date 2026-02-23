@@ -4,9 +4,9 @@ from datetime import datetime, timedelta
 
 class Settings(BaseSettings):
 
-    # DATABASE_URL: str
+    DATABASE_URL: str
 
-    # TELEGRAM_BOT_TOKEN: str
+    TELEGRAM_BOT_TOKEN: str
     APIFY_TOKEN: str
 
     LOBSTR_REELS_CRAWLER_HASH: str
