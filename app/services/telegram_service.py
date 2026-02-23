@@ -82,7 +82,7 @@ class TelegramNotificationService:
         return (
             f"🚀 <b>Обнаружен вирусный пост!</b>\n\n"
             f"👤 Аккаунт: @{username}\n"
-            f"🗓 Дата поста: {date.astimezone(MSK).strftime('%m-%d %H:%M')}\n"
+            f"🗓 Дата поста: {date.astimezone(MSK).strftime('%m-%d %H:%M')} мск\n"
             f"📁 Папка: {folder_name if folder_name else 'Без папки'}\n"
             f"📊 Просмотры: {alert.views:,}\n"
             f"⚡ Скорость: {alert.views_per_hour:.0f} в час\n"
