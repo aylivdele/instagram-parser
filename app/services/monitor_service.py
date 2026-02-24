@@ -104,7 +104,7 @@ class MonitorService:
             self.analytics_service.calculate_account_average_speed(posts_speeds)
         
         account.avg_reels_views_per_hour_all_time = \
-            self.analytics_service.calculate_account_average_speed(result_all_time)
+            self.analytics_service.calculate_account_average_speed(reels_speeds_all_time)
         
         account.last_checked = datetime.utcnow()
 

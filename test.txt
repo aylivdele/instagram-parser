@@ -1,0 +1,100 @@
+worker-1  | [Scheduler] Cycle started at 2026-02-24 15:55:03.147753+03:00
+worker-1  | INFO:app.services.scrape_creators_fetcher:[temagovorit] Загружаем Reels не старше 24 ч (cutoff: 2026-02-23T12:55:03.271938+00:00)  
+worker-1  | INFO:app.services.scrape_creators_fetcher:[temagovorit] Страница 1 (max_id=None)
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Загружаем Reels не старше 24 ч (cutoff: 2026-02-23T12:55:03.273149+00:00)
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Страница 1 (max_id=None)
+worker-1  | INFO:app.services.scrape_creators_fetcher:[russ.supreme] Загружаем Reels не старше 24 ч (cutoff: 2026-02-23T12:55:03.273957+00:00) 
+worker-1  | INFO:app.services.scrape_creators_fetcher:[russ.supreme] Страница 1 (max_id=None)
+worker-1  | INFO:app.services.scrape_creators_fetcher:[russ.supreme] Найден пост старше cutoff, останавливаем пагинацию
+worker-1  | INFO:app.services.scrape_creators_fetcher:[russ.supreme] Готово: 2 Reels за 1 страниц (не старше 24 ч)
+worker-1  | INFO:app.services.monitor_service:Processing 2 for user russ.supreme
+worker-1  | INFO:app.services.monitor_service:russ.supreme: Post DVHGA_ejnXo Views: 1446 Vph: 44.357869522915564 Growth: 63.43588688489446 Avph: 27.140838140497365 Trending: False
+worker-1  | INFO:app.services.monitor_service:russ.supreme(24h): Post DVHGA_ejnXo Views: 1446 Vph: 79.34809315446876 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:russ.supreme: Post DVG8Bm7jh-m Views: 4485 Vph: 54.7949903913904 Growth: 101.8912979316941 Avph: 27.140838140497365 Trending: False
+worker-1  | INFO:app.services.monitor_service:russ.supreme(24h): Post DVG8Bm7jh-m Views: 4485 Vph: 228.35204996542572 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.scrape_creators_fetcher:[temagovorit] Найден пост старше cutoff, останавливаем пагинацию
+worker-1  | INFO:app.services.scrape_creators_fetcher:[temagovorit] Готово: 10 Reels за 1 страниц (не старше 24 ч)
+worker-1  | INFO:app.services.monitor_service:Processing 10 for user temagovorit
+worker-1  | INFO:app.services.monitor_service:temagovorit: Post DVHJasFjaV2 Views: 4717777 Vph: 383289.16297079175 Growth: 728.2148742589809 Avph: 46278.95186182542 Trending: True      
+worker-1  | INFO:app.services.monitor_service:temagovorit(24h): Post DVHJasFjaV2 Views: 4717777 Vph: 269240.2493561099 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:temagovorit: Post DVHKug_jV5W Views: 14055 Vph: 379.2602702305104 Growth: -99.1804907955503 Avph: 46278.95186182542 Trending: False        
+worker-1  | INFO:app.services.monitor_service:temagovorit(24h): Post DVHKug_jV5W Views: 14055 Vph: 801.3086252718655 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:temagovorit: Post DVHIyGhDV-p Views: 25920 Vph: 839.4175971094854 Growth: -98.18617846053272 Avph: 46278.95186182542 Trending: False       
+worker-1  | INFO:app.services.monitor_service:temagovorit(24h): Post DVHIyGhDV-p Views: 25920 Vph: 1458.2229417131737 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:temagovorit: Post DVHH-njDaGN Views: 33233 Vph: 854.2054518285197 Growth: -98.15422472319833 Avph: 46278.95186182542 Trending: False       
+worker-1  | INFO:app.services.monitor_service:temagovorit(24h): Post DVHH-njDaGN Views: 33233 Vph: 1852.1595267833488 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:temagovorit: Post DVHHbBIjQod Views: 87123 Vph: 2012.8626037731865 Growth: -95.65058731281778 Avph: 46278.95186182542 Trending: False      
+worker-1  | INFO:app.services.monitor_service:temagovorit(24h): Post DVHHbBIjQod Views: 87123 Vph: 4834.703407125453 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Страница 1: принято 12, всего: 12
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Страница 2 (max_id=QVFCRG5RY1ptV2J6YmRRaVJveGxONDl2T2g4TUdEX280X1I0SHRsc2UwUy1FZjFYWlluWjVfRzdBUlpNTTF4UTloY01HLVV1RVg1bGpMelplSjg2VDJINA==)
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Страница 2: принято 12, всего: 24
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Страница 3 (max_id=QVFEdWNRb3NmNFBnZ2ZhTkdOWUh1YXJQYmU1djJNczAtTERlR19GUi0tS1FsV0pBbGtpYTkwZmp3T1JjbzdZZktTTFE4VFFORGhqQ1Bub0t0V0Vsc3VsTw==)
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Найден пост старше cutoff, останавливаем пагинацию
+worker-1  | INFO:app.services.scrape_creators_fetcher:[theivansergeev] Готово: 31 Reels за 3 страниц (не старше 24 ч)
+worker-1  | INFO:app.services.monitor_service:Processing 31 for user theivansergeev
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVINq6PDDMT Views: 20092 Vph: 831.5738060609673 Growth: 26.746706710862515 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVINq6PDDMT Views: 20092 Vph: 2578.9736374891086 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHE57SjIFA Views: 1352 Vph: 17.396943861329962 Growth: -97.34839490471437 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHE57SjIFA Views: 1352 Vph: 73.53097688089409 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHEee8DKRi Views: 49437 Vph: 896.8123624407935 Growth: 36.69022839402106 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHEee8DKRi Views: 49437 Vph: 2682.318269991979 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHEJ9OjGR2 Views: 87491 Vph: 1577.0324972926267 Growth: 140.36793120584784 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHEJ9OjGR2 Views: 87491 Vph: 4731.408600237673 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHD1n5DCd0 Views: 47167 Vph: 1236.9221415835102 Growth: 88.5290358604237 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHD1n5DCd0 Views: 47167 Vph: 2543.741991865808 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHDiyajJMm Views: 87644 Vph: 1229.9633068992857 Growth: 87.46838511319935 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHDiyajJMm Views: 87644 Vph: 4717.289471893104 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHDUIbDAlF Views: 40745 Vph: 758.5065111660019 Growth: 15.609945393095256 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHDUIbDAlF Views: 40745 Vph: 2188.3843083458496 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHDAQbjKCI Views: 8158 Vph: 170.4899840122075 Growth: -74.01428009969013 Avph: 656.0910556500473 Trending: False     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHDAQbjKCI Views: 8158 Vph: 437.3055397494252 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHCo_RDAzc Views: 15926 Vph: 495.81272178496476 Growth: -24.429281954816574 Avph: 656.0910556500473 Trending: False  
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHCo_RDAzc Views: 15926 Vph: 851.1578301636829 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHCGUVDPdf Views: 5876 Vph: 100.90226010878186 Growth: -84.62069262492702 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHCGUVDPdf Views: 5876 Vph: 312.87427680669884 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHBdXfDFZ5 Views: 20146 Vph: 337.5007000638716 Growth: -48.55886280457217 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHBdXfDFZ5 Views: 20146 Vph: 1068.5557330183274 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHA-h8DK54 Views: 52440 Vph: 2005.867981017734 Growth: 205.73012141284926 Avph: 656.0910556500473 Trending: True     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHA-h8DK54 Views: 52440 Vph: 2768.3150007445843 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVHAicujLJr Views: 11462 Vph: 236.5980350245176 Growth: -63.93823189829969 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVHAicujLJr Views: 11462 Vph: 603.531697249891 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG__cXjXAV Views: 112856 Vph: 1863.2095798415717 Growth: 183.98643203503596 Avph: 656.0910556500473 Trending: True   
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG__cXjXAV Views: 112856 Vph: 5920.955815574684 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG_rLLjcm7 Views: 7464 Vph: 276.6107826803191 Growth: -57.83957420266057 Avph: 656.0910556500473 Trending: False     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG_rLLjcm7 Views: 7464 Vph: 390.03331523550486 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG-5izDHOb Views: 9105 Vph: 111.34018726419175 Growth: -83.02976602022456 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG-5izDHOb Views: 9105 Vph: 473.0171760022798 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG-j46jIf1 Views: 7684 Vph: 109.6004893967264 Growth: -83.29492706037037 Avph: 656.0910556500473 Trending: False     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG-j46jIf1 Views: 7684 Vph: 397.9824343563465 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG-PiajEI_ Views: 12272 Vph: 194.84527898533102 Growth: -70.30209796225913 Avph: 656.0910556500473 Trending: False   
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG-PiajEI_ Views: 12272 Vph: 634.2338340823677 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG98MKjEJg Views: 14516 Vph: 309.66472710418384 Growth: -52.801562460355186 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG98MKjEJg Views: 14516 Vph: 748.358925567211 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG9mSJjEE4 Views: 9798 Vph: 156.5720344927757 Growth: -76.13562429415441 Avph: 656.0910556500473 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG9mSJjEE4 Views: 9798 Vph: 503.64101825345875 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG9TJvDC4g Views: 11549 Vph: 194.84515709730758 Growth: -70.3021165401718 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG9TJvDC4g Views: 11549 Vph: 592.3272624944389 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG83FwjFjF Views: 30853 Vph: 786.3392183215909 Growth: 19.85214728197982 Avph: 656.0910556500473 Trending: False     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG83FwjFjF Views: 30853 Vph: 1578.0328384457546 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG8gruDCJM Views: 58988 Vph: 2479.9254204013196 Growth: 277.9849456938928 Avph: 656.0910556500473 Trending: True     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG8gruDCJM Views: 58988 Vph: 3008.8834293308682 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG78PqDBF1 Views: 7251 Vph: 175.70851828720762 Growth: -73.21888223074194 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG78PqDBF1 Views: 7251 Vph: 368.1041833453492 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG7uGZjKHN Views: 35173 Vph: 1003.8001856506988 Growth: 52.99708432332542 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG7uGZjKHN Views: 35173 Vph: 1782.625721472891 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG7cGNjEbn Views: 12401 Vph: 170.48943859885776 Growth: -74.01436323043013 Avph: 656.0910556500473 Trending: False   
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG7cGNjEbn Views: 12401 Vph: 627.4431253618521 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG7FqvDPLY Views: 34262 Vph: 510.5983373694555 Growth: -22.175689948469017 Avph: 656.0910556500473 Trending: False   
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG7FqvDPLY Views: 34262 Vph: 1729.49093792686 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG63Q9jCE4 Views: 14074 Vph: 265.3023452165785 Growth: -59.56318213274222 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG63Q9jCE4 Views: 14074 Vph: 708.9220276778691 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVG6mMqjNWy Views: 25261 Vph: 592.3634335714825 Growth: -9.713228298078883 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVG6mMqjNWy Views: 25261 Vph: 1269.7578191859252 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVGsdWKDNYi Views: 6253 Vph: 132.21618207784442 Growth: -79.84789139567737 Avph: 656.0910556500473 Trending: False    
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVGsdWKDNYi Views: 6253 Vph: 284.8651764567145 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | INFO:app.services.monitor_service:theivansergeev: Post DVGriXGjHBU Views: 9601 Vph: 65.23823594500408 Growth: -90.05652715683392 Avph: 656.0910556500473 Trending: False     
+worker-1  | INFO:app.services.monitor_service:theivansergeev(24h): Post DVGriXGjHBU Views: 9601 Vph: 434.6602966944062 Growth: 0.0 Avph: 0 Trending: False
+worker-1  | ERROR:app.services.scrape_creators_fetcher:Ошибка при обработке @temagovorit: 'PostTrendResult' object is not iterable
+worker-1  | ERROR:app.services.scrape_creators_fetcher:Ошибка при обработке @theivansergeev: 'PostTrendResult' object is not iterable
+worker-1  | ERROR:app.services.scrape_creators_fetcher:Ошибка при обработке @russ.supreme: 'PostTrendResult' object is not iterable
+worker-1  | [Scheduler] Cycle finished
