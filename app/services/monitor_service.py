@@ -50,6 +50,7 @@ class MonitorService:
 
         reels_speeds = []
         posts_speeds = []
+        reels_speeds_all_time = []
 
         for fetched in fetched_posts:
 
@@ -70,8 +71,16 @@ class MonitorService:
                 account_avg_speed=account.avg_posts_views_per_hour if fetched.post_type == ContentType.POST else account.avg_reels_views_per_hour
             )
 
+            result_all_time = self.trend_service.analyze_post(
+                post_id=post.id,
+                published_at=post.published_at,
+                snapshots=[snapshots[-1]],
+                account_avg_speed=account.avg_reels_views_per_hour_all_time
+            )
+
             if fetched.post_type == ContentType.REEL:
                 reels_speeds.append(result.views_per_hour)
+                reels_speeds_all_time.append(result_all_time.views_per_hour)
             else:
                 posts_speeds.append(result.views_per_hour)
 
@@ -80,13 +89,22 @@ class MonitorService:
                     account.id,
                     result
                 )
+            if result_all_time.is_trending:
+                await self._create_alerts_for_account_users(
+                    account.id,
+                    result_all_time
+                )
             self.logger.info(f"{account.username}: Post {fetched.post_code} Views: {result.current_views} Vph: {result.views_per_hour} Growth: {result.growth_rate} Avph: {result.avg_views_per_hour} Trending: {result.is_trending}")
+            self.logger.info(f"{account.username}(24h): Post {fetched.post_code} Views: {result_all_time.current_views} Vph: {result_all_time.views_per_hour} Growth: {result_all_time.growth_rate} Avph: {result_all_time.avg_views_per_hour} Trending: {result_all_time.is_trending}")
 
         account.avg_reels_views_per_hour = \
             self.analytics_service.calculate_account_average_speed(reels_speeds)
 
         account.avg_posts_views_per_hour = \
             self.analytics_service.calculate_account_average_speed(posts_speeds)
+        
+        account.avg_reels_views_per_hour_all_time = \
+            self.analytics_service.calculate_account_average_speed(result_all_time)
         
         account.last_checked = datetime.utcnow()
 

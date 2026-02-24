@@ -43,9 +43,9 @@ async def list_competitors(
     dto_accounts = [({
                 "username": username,
                 "avgReelsViews": avg_reels_views_per_hour,
-                "avgPostsViews": avg_posts_views_per_hour,
+                "avgReelsViewsAllTime": avg_reels_views_per_hour_all_time,
                 "folderId": folder_id
-            }) for username, avg_posts_views_per_hour, avg_reels_views_per_hour, folder_id in accounts]
+            }) for username, avg_reels_views_per_hour_all_time, avg_reels_views_per_hour, folder_id in accounts]
     return {
         "success": True,
         "data": dto_accounts

@@ -54,6 +54,7 @@ class InstagramAccount(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=datetime.utcnow)
     last_checked: Mapped[datetime | None] = mapped_column(DateTime(timezone=True))
     avg_reels_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
+    avg_reels_views_per_hour_all_time: Mapped[float] = mapped_column(Float, default=0)
     avg_posts_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
 
     posts = relationship("InstagramPost", back_populates="account", cascade="all, delete-orphan", passive_deletes=True)

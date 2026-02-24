@@ -47,7 +47,7 @@ class UserCompetitorRepository:
 
     async def get_user_accounts(self, user_id: str):
         result = await self.session.execute(
-            select(InstagramAccount.username, InstagramAccount.avg_posts_views_per_hour, InstagramAccount.avg_reels_views_per_hour, UserCompetitor.folder_id)
+            select(InstagramAccount.username, InstagramAccount.avg_reels_views_per_hour_all_time, InstagramAccount.avg_reels_views_per_hour, UserCompetitor.folder_id)
             .join(InstagramAccount, InstagramAccount.id == UserCompetitor.account_id)
             .where(UserCompetitor.user_id == user_id)
         )
