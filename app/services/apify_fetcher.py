@@ -33,7 +33,7 @@ class ApifyFetcher(InstagramFetcherInterface):
             for account in accounts:
                 reels = await self._fetch_by_type(account.username, "reels")
                 # posts = await self._fetch_by_type(username, "posts")
-                await process_callback(account, reels)
+                process_callback(account, reels)
 
         except Exception as e:
             self.logger.exception("Apify fetcher exception")

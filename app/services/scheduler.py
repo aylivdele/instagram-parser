@@ -14,13 +14,13 @@ class Scheduler:
     def __init__(
         self,
         session_factory: async_sessionmaker,
-        monitor_service_factory,
+        monitor_service,
         telegram_service_factory,
         monitoring_interval_minutes: int = 60,
         skip_night_time: bool = True
     ):
         self.session_factory = session_factory
-        self.monitor_service_factory = monitor_service_factory
+        self.monitor_service = monitor_service
         self.telegram_service_factory = telegram_service_factory
         self.interval = monitoring_interval_minutes
         self.skip_night_time = skip_night_time
@@ -40,11 +40,10 @@ class Scheduler:
                 print(f"[Scheduler] Cycle started at {started_at}")
 
                 async with self.session_factory() as session:
-                    monitor_service = self.monitor_service_factory(session)
                     telegram_service = self.telegram_service_factory(session)
 
                     try:
-                        await monitor_service.monitor_cycle()
+                        await self.monitor_service.monitor_cycle()
                         await telegram_service.send_pending_alerts()
                     except Exception as e:
                         self.logger.exception(f"[Scheduler] Error: {e}")

@@ -1,9 +1,10 @@
 from datetime import datetime
 import logging
-from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select
+from sqlalchemy.ext.asyncio import AsyncSession, async_sessionmaker
 from typing import List
 
-from app.db.models import InstagramAccount
+from app.db.models import InstagramAccount, UserCompetitor
 from app.repositories.account_repository import AccountRepository
 from app.repositories.post_repository import PostRepository
 from app.repositories.snapshot_repository import SnapshotRepository
@@ -19,21 +20,16 @@ class MonitorService:
 
     def __init__(
         self,
-        session: AsyncSession,
+        session_factory: async_sessionmaker,
         fetcher: InstagramFetcherInterface,
         trend_service: TrendService,
         analytics_service: AccountAnalyticsService,
     ):
-        self.session = session
+        self.session_factory = session_factory
         self.fetcher = fetcher
         self.trend_service = trend_service
         self.analytics_service = analytics_service
 
-        self.account_repo = AccountRepository(session)
-        self.post_repo = PostRepository(session)
-        self.snapshot_repo = SnapshotRepository(session)
-        self.user_comp_repo = UserCompetitorRepository(session)
-        self.alert_repo = AlertRepository(session)
         self.logger = logging.getLogger(__name__)
 
     # ────────────────────────────────
@@ -44,8 +40,40 @@ class MonitorService:
 
         accounts = await self._get_accounts_with_subscribers()
         await self.fetcher.process_accounts(accounts, self._process_posts)
+    
+    async def _get_accounts_with_subscribers(self):
+
+        async with self.session_factory() as session:
+            result = await session.execute(
+                select(InstagramAccount)
+                .join(UserCompetitor,
+                    InstagramAccount.id == UserCompetitor.account_id)
+                .distinct()
+            )
+
+            return result.scalars().all()
 
     async def _process_posts(self, account: InstagramAccount, fetched_posts: List[FetchedPost]):
+        async with self.session_factory() as session:
+            await PostProcessor(session, self.trend_service, self.analytics_service).execute(account, fetched_posts)
+
+
+class PostProcessor:
+    def __init__(self, session: AsyncSession, trend_service: TrendService, analytics_service: AccountAnalyticsService):
+        self.trend_service = trend_service
+        self.analytics_service = analytics_service
+
+        self.session = session
+        self.account_repo = AccountRepository(session)
+        self.post_repo = PostRepository(session)
+        self.snapshot_repo = SnapshotRepository(session)
+        self.user_comp_repo = UserCompetitorRepository(session)
+        self.alert_repo = AlertRepository(session)
+
+        self.logger = logging.getLogger(__name__)
+
+
+    async def execute(self, account: InstagramAccount, fetched_posts: List[FetchedPost]):
         self.logger.info(f"Processing {len(fetched_posts)} for user {account.username}")
 
         reels_speeds = []
@@ -167,15 +195,4 @@ class MonitorService:
 
     # ────────────────────────────────
 
-    async def _get_accounts_with_subscribers(self):
-        from sqlalchemy import select
-        from app.db.models import InstagramAccount, UserCompetitor
 
-        result = await self.session.execute(
-            select(InstagramAccount)
-            .join(UserCompetitor,
-                  InstagramAccount.id == UserCompetitor.account_id)
-            .distinct()
-        )
-
-        return result.scalars().all()

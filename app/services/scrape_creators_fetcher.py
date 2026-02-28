@@ -204,7 +204,7 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         self,
         api_key: Optional[str] = None,
         page_delay: float = PAGE_DELAY_SECONDS,
-        max_age_hours: Optional[int] = 24,
+        max_age_hours: Optional[float] = 24.0,
     ) -> None:
         self._api_key = api_key or os.environ["SCRAPECREATORS_API_KEY"]
         self._page_delay = page_delay
@@ -294,6 +294,6 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         log.info("[%s] Готово: %d Reels за %d страниц (не старше %g ч)", username, len(all_posts), page, self._max_age_hours)
 
         if all_posts:
-            await callback(account, all_posts)
+            callback(account, all_posts)
         else:
             log.warning("[%s] Нет Reels в заданном временном окне", username)

@@ -49,12 +49,11 @@ class AppFactory:
         # )
         fetcher = ScrapeCreatorsFetcher(
             api_key=self.settings.SC_API_KEY,
-            max_age_hours=self.settings.CONTENT_LOOKBACK_HOURS
+            max_age_hours=float(self.settings.CONTENT_LOOKBACK_HOURS)
         )
 
-        def monitor_factory(session):
-            return MonitorService(
-                session=session,
+        monitor_service = MonitorService(
+                session_factory=session_factory,
                 fetcher=fetcher,
                 trend_service=trend_service,
                 analytics_service=analytics_service
@@ -68,7 +67,7 @@ class AppFactory:
 
         return Scheduler(
             session_factory=session_factory,
-            monitor_service_factory=monitor_factory,
+            monitor_service=monitor_service,
             telegram_service_factory=telegram_factory,
             monitoring_interval_minutes=self.settings.MONITOR_INTERVAL
         )
