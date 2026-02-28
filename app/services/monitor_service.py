@@ -84,12 +84,12 @@ class MonitorService:
             else:
                 posts_speeds.append(result.views_per_hour)
 
-            if result.is_trending:
+            if result.is_trending and fetched.views > 100000:
                 await self._create_alerts_for_account_users(
                     account.id,
                     result
                 )
-            if result_all_time.is_trending:
+            if result_all_time.is_trending and fetched.views > 100000:
                 await self._create_alerts_for_account_users(
                     account.id,
                     result_all_time
