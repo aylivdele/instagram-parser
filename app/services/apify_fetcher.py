@@ -2,7 +2,7 @@ import asyncio
 import json
 import logging
 import aiohttp
-from typing import Callable, List
+from typing import Any, Callable, Coroutine, List
 from datetime import datetime
 
 from app.db.models import InstagramAccount
@@ -28,12 +28,12 @@ class ApifyFetcher(InstagramFetcherInterface):
         self.logger = logging.getLogger(__name__)
 
 
-    async def process_accounts(self, accounts: List[InstagramAccount], process_callback: Callable[[InstagramAccount, List[FetchedPost]], None]):
+    async def process_accounts(self, accounts: List[InstagramAccount], process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]]):
         try:
             for account in accounts:
                 reels = await self._fetch_by_type(account.username, "reels")
                 # posts = await self._fetch_by_type(username, "posts")
-                process_callback(account, reels)
+                await process_callback(account, reels)
 
         except Exception as e:
             self.logger.exception("Apify fetcher exception")

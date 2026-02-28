@@ -26,7 +26,7 @@ import logging
 import os
 from datetime import datetime, timezone
 from pathlib import Path
-from typing import Callable, Dict, List, Optional, Any
+from typing import Callable, Coroutine, Dict, List, Optional, Any
 
 import aiohttp
 
@@ -408,7 +408,7 @@ class LobstrFetcher(InstagramFetcherInterface):
     async def process_accounts(
         self,
         accounts: List[InstagramAccount],
-        process_callback: Callable[[InstagramAccount, List[FetchedPost]], None],
+        process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]],
     ) -> None:
         if not accounts:
             return
@@ -448,12 +448,12 @@ class LobstrFetcher(InstagramFetcherInterface):
         self,
         all_results: List[dict],
         account: InstagramAccount,
-        callback: Callable[[InstagramAccount, List[FetchedPost]], None],
+        callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]],
     ) -> None:
         posts = _parse_results(all_results, username=account.username)
         if posts:
             log.info("[%s] Передаём %d записей в callback", account.username, len(posts))
-            callback(account, posts)
+            await callback(account, posts)
         else:
             log.warning("[%s] Результатов не найдено", account.username)
 

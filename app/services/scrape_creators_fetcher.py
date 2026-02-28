@@ -33,7 +33,7 @@ import os
 from dataclasses import dataclass
 from datetime import datetime, timedelta, timezone
 from enum import Enum
-from typing import Any, Callable, List, Optional
+from typing import Any, Callable, Coroutine, List, Optional
 
 import aiohttp
 
@@ -213,7 +213,7 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
     async def process_accounts(
         self,
         accounts: List[InstagramAccount], 
-        process_callback: Callable[[InstagramAccount, List[FetchedPost]], None]
+        process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]]
     ) -> None:
         """
         Запускает сбор Reels для всех usernames параллельно.
@@ -241,7 +241,7 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         self,
         client: ScrapeCreatorsClient,
         account: InstagramAccount,
-        callback: Callable[[InstagramAccount, List[FetchedPost]], None],
+        callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]],
     ) -> None:
         cutoff: datetime = datetime.now(tz=timezone.utc) - timedelta(hours=self._max_age_hours)
         username = account.username
@@ -294,6 +294,6 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         log.info("[%s] Готово: %d Reels за %d страниц (не старше %g ч)", username, len(all_posts), page, self._max_age_hours)
 
         if all_posts:
-            callback(account, all_posts)
+            await callback(account, all_posts)
         else:
             log.warning("[%s] Нет Reels в заданном временном окне", username)
