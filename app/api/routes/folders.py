@@ -66,7 +66,7 @@ async def delete_folder(
 ):
 
     repo = FoldersRepository(session)
-    folder = repo.delete_by_folder_id_and_user_id(folder_id, user_id)
+    folder = await repo.delete_by_folder_id_and_user_id(folder_id, user_id)
 
     if not folder:
         return {"success": False, "error": "Folder not found"}
