@@ -668,6 +668,9 @@
 
                 username = username.substring(linkPrefix.length, endIndex)
             }
+            if (username.startsWith('@')) {
+                username = username.substring(1)
+            }
 
             try {
                 const response = await fetch(`${API_URL}/competitors`, {
