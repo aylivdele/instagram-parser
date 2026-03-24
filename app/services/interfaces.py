@@ -1,4 +1,4 @@
-from typing import Any, Callable, Coroutine, List
+from typing import Any, Callable, Coroutine, List, Optional
 from dataclasses import dataclass
 from datetime import datetime
 from enum import Enum
@@ -22,5 +22,10 @@ class FetchedPost:
 
 
 class InstagramFetcherInterface:
-    async def process_accounts(self, accounts: List[InstagramAccount], process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]]):
+    async def process_accounts(
+        self,
+        accounts: List[InstagramAccount],
+        process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]],
+        ban_callback: Optional[Callable[[InstagramAccount], Coroutine[Any, Any, Any]]] = None,
+    ):
         raise NotImplementedError

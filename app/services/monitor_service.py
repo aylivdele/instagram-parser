@@ -39,7 +39,7 @@ class MonitorService:
     async def monitor_cycle(self):
 
         accounts = await self._get_accounts_with_subscribers()
-        await self.fetcher.process_accounts(accounts, self._process_posts)
+        await self.fetcher.process_accounts(accounts, self._process_posts, self._ban_account)
     
     async def _get_accounts_with_subscribers(self):
 
@@ -48,10 +48,19 @@ class MonitorService:
                 select(InstagramAccount)
                 .join(UserCompetitor,
                     InstagramAccount.id == UserCompetitor.account_id)
+                .where(InstagramAccount.is_banned == False)
                 .distinct()
             )
 
             return result.scalars().all()
+
+    async def _ban_account(self, account: InstagramAccount):
+        async with self.session_factory() as session:
+            db_account = await session.get(InstagramAccount, account.id)
+            if db_account:
+                db_account.is_banned = True
+                await session.commit()
+                self.logger.warning("Аккаунт @%s помечен как забаненный", account.username)
 
     async def _process_posts(self, account: InstagramAccount, fetched_posts: List[FetchedPost]):
         async with self.session_factory() as session:

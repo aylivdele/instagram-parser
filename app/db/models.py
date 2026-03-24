@@ -57,6 +57,8 @@ class InstagramAccount(Base):
     avg_reels_views_per_hour_all_time: Mapped[float] = mapped_column(Float, default=0)
     avg_posts_views_per_hour: Mapped[float] = mapped_column(Float, default=0)
 
+    is_banned: Mapped[bool] = mapped_column(Boolean, default=False, server_default="false")
+
     posts = relationship("InstagramPost", back_populates="account", cascade="all, delete-orphan", passive_deletes=True)
 
 

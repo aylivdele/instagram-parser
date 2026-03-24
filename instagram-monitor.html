@@ -106,6 +106,23 @@
             margin-bottom: 12px;
         }
 
+        .competitor-card.banned {
+            opacity: 0.6;
+            border: 1px solid #ff3b30;
+        }
+
+        .banned-badge {
+            display: inline-block;
+            font-size: 11px;
+            font-weight: 600;
+            color: #fff;
+            background: #ff3b30;
+            border-radius: 4px;
+            padding: 2px 6px;
+            margin-left: 6px;
+            vertical-align: middle;
+        }
+
         .competitor-header {
             display: flex;
             justify-content: space-between;
@@ -848,10 +865,11 @@
                     ? `<span class="folder-badge" style="background: ${folder.color}20; color: ${folder.color}">${folder.name}</span>`
                     : '';
                     
+                const bannedBadge = c.isBanned ? '<span class="banned-badge">забанен</span>' : '';
                 return `
-                    <div class="competitor-card">
+                    <div class="competitor-card${c.isBanned ? ' banned' : ''}">
                         <div class="competitor-header">
-                            <div class="competitor-name">@${c.username}${folderBadge}</div>
+                            <div class="competitor-name">@${c.username}${folderBadge}${bannedBadge}</div>
                             <button class="btn-remove" onclick="removeCompetitor('${c.username}')">
                                 Удалить
                             </button>

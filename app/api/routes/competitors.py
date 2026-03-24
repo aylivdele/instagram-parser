@@ -44,8 +44,9 @@ async def list_competitors(
                 "username": username,
                 "avgReelsViews": avg_reels_views_per_hour,
                 "avgReelsViewsAllTime": avg_reels_views_per_hour_all_time,
-                "folderId": folder_id
-            }) for username, avg_reels_views_per_hour_all_time, avg_reels_views_per_hour, folder_id in accounts]
+                "folderId": folder_id,
+                "isBanned": is_banned,
+            }) for username, avg_reels_views_per_hour_all_time, avg_reels_views_per_hour, folder_id, is_banned in accounts]
     return {
         "success": True,
         "data": dto_accounts

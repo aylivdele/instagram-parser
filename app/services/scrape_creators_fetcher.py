@@ -212,8 +212,9 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
 
     async def process_accounts(
         self,
-        accounts: List[InstagramAccount], 
-        process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]]
+        accounts: List[InstagramAccount],
+        process_callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]],
+        ban_callback: Optional[Callable[[InstagramAccount], Coroutine[Any, Any, Any]]] = None,
     ) -> None:
         """
         Запускает сбор Reels для всех usernames параллельно.
@@ -228,7 +229,7 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
             client = ScrapeCreatorsClient(self._api_key, session)
 
             tasks = [
-                self._fetch_one(client, account, process_callback)
+                self._fetch_one(client, account, process_callback, ban_callback)
                 for account in accounts
             ]
             results = await asyncio.gather(*tasks, return_exceptions=True)
@@ -242,6 +243,7 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
         client: ScrapeCreatorsClient,
         account: InstagramAccount,
         callback: Callable[[InstagramAccount, List[FetchedPost]], Coroutine[Any, Any, Any]],
+        ban_callback: Optional[Callable[[InstagramAccount], Coroutine[Any, Any, Any]]] = None,
     ) -> None:
         cutoff: datetime = datetime.now(tz=timezone.utc) - timedelta(hours=self._max_age_hours)
         username = account.username
@@ -259,8 +261,10 @@ class ScrapeCreatorsFetcher(InstagramFetcherInterface):
                 data = await client.get_reels_page(username, max_id=max_id)
             except aiohttp.ClientResponseError as exc:
                 if exc.status == 404:
-                    log.warning("[%s] Профиль не найден (404)", username)
-                    break
+                    log.warning("[%s] Профиль не найден (404), помечаем как забаненный", username)
+                    if ban_callback:
+                        await ban_callback(account)
+                    return
                 raise
 
             raw_items: List[dict] = data.get("items") or []
